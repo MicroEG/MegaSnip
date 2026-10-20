@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/icon.png" width="128" height="128" alt="MegaSnip app icon">
+</p>
+
 # MegaSnip
 
 MegaSnip is a tray-only Windows utility that turns text on your screen into plain text on your clipboard. Press a hotkey, drag a box around the text, and MegaSnip recognizes it locally with Windows OCR and copies it.
