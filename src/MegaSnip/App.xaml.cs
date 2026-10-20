@@ -5,8 +5,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using MegaSnip.Capture;
 using MegaSnip.Clipboard;
+using MegaSnip.History;
 using MegaSnip.Infrastructure;
 using MegaSnip.Ocr;
 using MegaSnip.Overlay;
@@ -20,6 +22,10 @@ namespace MegaSnip;
 public partial class App : Application
 {
     private const string SingleInstanceMutexName = "MegaSnip.SingleInstance";
+
+    private static readonly TimeSpan HistoryPruneInterval = TimeSpan.FromHours(24);
+    private static readonly string AppVersion =
+        typeof(App).Assembly.GetName().Version?.ToString() ?? "unknown";
 
     private readonly IScreenCapture _screenCapture = new ScreenCapture();
     private readonly IOcrService _ocrService = new WindowsOcrService();
@@ -35,6 +41,9 @@ public partial class App : Application
     private SelectionOverlayController? _overlayController;
     private PreviewWindow? _previewWindow;
     private SettingsWindow? _settingsWindow;
+    private HistoryService? _historyService;
+    private HistoryLogOperation? _activeHistoryLog;
+    private DispatcherTimer? _historyPruneTimer;
     private CancellationTokenSource? _ocrCancellation;
     private Task _ocrWarmUpTask = Task.CompletedTask;
     private int _captureGeneration;
@@ -55,6 +64,7 @@ public partial class App : Application
 
         _toastController = new ToastController();
         _toastController.PreviewRequested += OnPreviewRequested;
+        _toastController.DiscardHistoryRequested += OnDiscardHistoryRequested;
 
         _trayController = new TrayController();
         _trayController.SnipRequested += OnSnipRequested;
@@ -75,6 +85,7 @@ public partial class App : Application
         }
 
         SyncStartupRegistration();
+        InitializeHistory();
         _ocrWarmUpTask = WarmUpOcrAsync(_settings.OcrLanguageTag);
     }
 
@@ -87,9 +98,19 @@ public partial class App : Application
         ClosePreview();
         CloseSettings();
 
+        if (_historyPruneTimer is not null)
+        {
+            _historyPruneTimer.Stop();
+            _historyPruneTimer.Tick -= OnHistoryPruneTimerTick;
+            _historyPruneTimer = null;
+        }
+
+        _activeHistoryLog?.Completion.Wait(TimeSpan.FromSeconds(2));
+
         if (_toastController is not null)
         {
             _toastController.PreviewRequested -= OnPreviewRequested;
+            _toastController.DiscardHistoryRequested -= OnDiscardHistoryRequested;
             _toastController.Dispose();
             _toastController = null;
         }
@@ -167,14 +188,16 @@ public partial class App : Application
         var cancellation = new CancellationTokenSource();
         _ocrCancellation = cancellation;
         int generation = ++_captureGeneration;
+        string monitorId = System.Windows.Forms.Screen.FromRectangle(e.Bounds).DeviceName;
 
         await Task.Yield();
 
-        await RecognizeAndCopyAsync(capture, generation, cancellation);
+        await RecognizeAndCopyAsync(capture, monitorId, generation, cancellation);
     }
 
     private async Task RecognizeAndCopyAsync(
         Bitmap capture,
+        string monitorId,
         int generation,
         CancellationTokenSource cancellation)
     {
@@ -212,6 +235,7 @@ public partial class App : Application
                 return;
             }
 
+            bool historyLogStarted = TryBeginHistoryLog(capture, monitorId, text);
             string clipboardText = ClipboardTextFormatter.Format(text, _settings.LineBreakMode);
             bool copied;
 
@@ -253,13 +277,13 @@ public partial class App : Application
                 }
                 else
                 {
-                    _toastController?.ShowCopied(clipboardText.Length);
+                    _toastController?.ShowCopied(clipboardText.Length, historyLogStarted);
                 }
             }
             else
             {
                 PlayFeedback(ToastKind.Warning);
-                _toastController?.ShowCopyFailed();
+                _toastController?.ShowCopyFailed(historyLogStarted);
             }
         }
         catch (OperationCanceledException)
@@ -285,6 +309,29 @@ public partial class App : Application
     }
 
     private void OnPreviewRequested(object? sender, EventArgs e) => OpenPreview();
+
+    private async void OnDiscardHistoryRequested(object? sender, EventArgs e)
+    {
+        HistoryLogOperation? operation = _activeHistoryLog;
+        if (operation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await operation.DiscardAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowHistoryError("History could not be updated", ex.Message);
+        }
+
+        if (ReferenceEquals(_activeHistoryLog, operation))
+        {
+            _activeHistoryLog = null;
+        }
+    }
 
     private void OpenPreview()
     {
@@ -495,6 +542,156 @@ public partial class App : Application
 
         return null;
     }
+
+    private void InitializeHistory()
+    {
+        try
+        {
+            string directory = HistoryPaths.Resolve(_settings.HistoryDirectory);
+            _historyService = new HistoryService(new HistoryRepository(directory));
+        }
+        catch (Exception ex) when (
+            ex is ArgumentException
+                or NotSupportedException
+                or PathTooLongException
+                or System.Security.SecurityException)
+        {
+            ShowHistoryError("History is unavailable", ex.Message);
+            return;
+        }
+
+        _ = InitializeHistoryAsync();
+    }
+
+    private async Task InitializeHistoryAsync()
+    {
+        HistoryService? service = _historyService;
+        if (service is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await service.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            if (!_isShuttingDown)
+            {
+                ShowHistoryError("History is unavailable", ex.Message);
+            }
+
+            return;
+        }
+
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        StartHistoryPruneTimer();
+        await PruneHistoryAsync();
+    }
+
+    private void StartHistoryPruneTimer()
+    {
+        if (_historyPruneTimer is not null)
+        {
+            return;
+        }
+
+        _historyPruneTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = HistoryPruneInterval,
+        };
+        _historyPruneTimer.Tick += OnHistoryPruneTimerTick;
+        _historyPruneTimer.Start();
+    }
+
+    private async void OnHistoryPruneTimerTick(object? sender, EventArgs e)
+    {
+        await PruneHistoryAsync();
+    }
+
+    private async Task PruneHistoryAsync()
+    {
+        HistoryService? service = _historyService;
+        if (service is null || _isShuttingDown)
+        {
+            return;
+        }
+
+        try
+        {
+            await service.PruneAsync(_settings.HistoryRetention, protectedEntryId: null);
+        }
+        catch (Exception ex)
+        {
+            if (!_isShuttingDown)
+            {
+                ShowHistoryError("History cleanup failed", ex.Message);
+            }
+        }
+    }
+
+    private bool TryBeginHistoryLog(Bitmap capture, string monitorId, string text)
+    {
+        HistoryService? service = _historyService;
+        if (service is null || !_settings.SaveHistory || text.Length == 0)
+        {
+            return false;
+        }
+
+        Bitmap? image;
+
+        try
+        {
+            image = _settings.SaveHistoryImages ? (Bitmap)capture.Clone() : null;
+        }
+        catch (Exception ex)
+        {
+            ShowHistoryError("History could not be saved", ex.Message);
+            return false;
+        }
+
+        DateTimeOffset createdAt = DateTimeOffset.UtcNow;
+        var request = new HistorySaveRequest
+        {
+            Id = HistoryEntryId.Create(createdAt),
+            CreatedAtUtc = createdAt,
+            Text = text,
+            Width = capture.Width,
+            Height = capture.Height,
+            MonitorId = monitorId,
+            OcrLanguage = _settings.OcrLanguageTag,
+            AppVersion = AppVersion,
+            Image = image,
+            SaveImage = image is not null,
+        };
+
+        var operation = new HistoryLogOperation(service, request);
+        operation.Failed += OnHistoryLogFailed;
+        _activeHistoryLog = operation;
+        operation.Start();
+        return true;
+    }
+
+    private void OnHistoryLogFailed(object? sender, HistoryStorageException e)
+    {
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            new Action(() =>
+            {
+                if (!_isShuttingDown)
+                {
+                    ShowHistoryError("History could not be updated", e.Message);
+                }
+            }));
+    }
+
+    private void ShowHistoryError(string title, string message) =>
+        _trayController?.ShowBalloon(title, message);
 
     private void PlayFeedback(ToastKind kind)
     {

@@ -39,7 +39,14 @@ internal partial class ToastWindow : Window
 
     internal event EventHandler? PreviewRequested;
 
-    internal void Configure(ToastKind kind, string title, string? detail, bool canPreview)
+    internal event EventHandler? DiscardHistoryRequested;
+
+    internal void Configure(
+        ToastKind kind,
+        string title,
+        string? detail,
+        bool canPreview,
+        bool canDiscardHistory)
     {
         TitleText.Text = title;
         DetailText.Text = detail ?? string.Empty;
@@ -47,6 +54,9 @@ internal partial class ToastWindow : Window
             ? Visibility.Collapsed
             : Visibility.Visible;
         PreviewButton.Visibility = canPreview ? Visibility.Visible : Visibility.Collapsed;
+        DiscardHistoryButton.Visibility = canDiscardHistory
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         switch (kind)
         {
@@ -148,6 +158,12 @@ internal partial class ToastWindow : Window
     {
         _dismissTimer.Stop();
         PreviewRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnDiscardHistoryClicked(object sender, RoutedEventArgs e)
+    {
+        _dismissTimer.Stop();
+        DiscardHistoryRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnCloseClicked(object sender, RoutedEventArgs e)
