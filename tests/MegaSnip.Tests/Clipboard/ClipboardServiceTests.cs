@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using MegaSnip.Clipboard;
 using Xunit;
 
@@ -12,13 +13,14 @@ public sealed class ClipboardServiceTests
     [Fact]
     public async Task TrySetTextAsync_WritesTextOnFirstAttempt()
     {
-        string? written = null;
-        var service = new ClipboardService(text => written = text, TimeSpan.Zero);
+        DataObject? written = null;
+        var service = new ClipboardService(data => written = data, TimeSpan.Zero);
 
         bool copied = await service.TrySetTextAsync("plain text");
 
         Assert.True(copied);
-        Assert.Equal("plain text", written);
+        Assert.NotNull(written);
+        Assert.Equal("plain text", written.GetData(DataFormats.UnicodeText));
     }
 
     [Fact]

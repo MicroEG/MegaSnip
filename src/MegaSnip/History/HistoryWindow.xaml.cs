@@ -332,6 +332,7 @@ internal partial class HistoryWindow : Window
     {
         bool busy = _operationInProgress;
         bool hasSelection = _viewModel.SelectedItem is not null;
+        bool hasImage = _viewModel.SelectedItem?.HasImage == true;
         int selectedCount = HistoryList.SelectedItems.Count;
         bool hasHistory = _viewModel.TotalCount > 0;
 
@@ -342,7 +343,9 @@ internal partial class HistoryWindow : Window
             : "Delete selected";
         ClearAllButton.IsEnabled = !busy && hasHistory;
         CopyTextButton.IsEnabled = !busy && hasSelection;
-        RerunButton.IsEnabled = !busy && hasSelection && _viewModel.SelectedItem?.HasImage == true;
+        CopyImageButton.IsEnabled = !busy && hasImage;
+        CopyBothButton.IsEnabled = !busy && hasImage;
+        RerunButton.IsEnabled = !busy && hasImage;
         OpenFolderButton.IsEnabled = !busy && hasSelection;
         DeleteButton.IsEnabled = !busy && hasSelection;
         TextEditor.IsReadOnly = busy;
@@ -357,9 +360,19 @@ internal partial class HistoryWindow : Window
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.C &&
-            Keyboard.Modifiers == ModifierKeys.Control &&
-            Keyboard.FocusedElement is not TextBox)
+        if (e.Key != Key.C)
+        {
+            return;
+        }
+
+        ModifierKeys modifiers = Keyboard.Modifiers;
+
+        if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            e.Handled = true;
+            _ = CopySelectedImageAsync();
+        }
+        else if (modifiers == ModifierKeys.Control && Keyboard.FocusedElement is not TextBox)
         {
             e.Handled = true;
             _ = CopySelectedTextAsync();
@@ -433,6 +446,158 @@ internal partial class HistoryWindow : Window
                 SetBusy(false);
             }
         }
+    }
+
+    private async void OnCopyImageClicked(object sender, RoutedEventArgs e)
+    {
+        await CopySelectedImageAsync();
+    }
+
+    private async Task CopySelectedImageAsync()
+    {
+        if (_operationInProgress || _viewModel.SelectedItem is null)
+        {
+            return;
+        }
+
+        string? imagePath = GetSelectedImagePath();
+
+        if (imagePath is null)
+        {
+            return;
+        }
+
+        SetBusy(true);
+        _viewModel.SetStatus("Copying image…", StatusKind.Info);
+
+        try
+        {
+            bool copied = await _clipboardService.TrySetImageAsync(imagePath, _lifetime.Token);
+
+            if (_lifetime.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _viewModel.SetStatus(
+                copied
+                    ? "Image copied to the clipboard."
+                    : "Could not copy — the clipboard is busy.",
+                copied ? StatusKind.Success : StatusKind.Error);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (!_lifetime.IsCancellationRequested)
+            {
+                _viewModel.SetStatus("Could not copy image: " + ex.Message, StatusKind.Error);
+            }
+        }
+        finally
+        {
+            if (!_lifetime.IsCancellationRequested)
+            {
+                SetBusy(false);
+            }
+        }
+    }
+
+    private async void OnCopyBothClicked(object sender, RoutedEventArgs e)
+    {
+        await CopySelectedTextAndImageAsync();
+    }
+
+    private async Task CopySelectedTextAndImageAsync()
+    {
+        if (_operationInProgress || _viewModel.SelectedItem is null)
+        {
+            return;
+        }
+
+        string? imagePath = GetSelectedImagePath();
+
+        if (imagePath is null)
+        {
+            return;
+        }
+
+        string text = TextEditor.Text;
+        bool hasText = !string.IsNullOrWhiteSpace(text);
+
+        SetBusy(true);
+        _viewModel.SetStatus(
+            hasText ? "Copying text and image…" : "Copying image…",
+            StatusKind.Info);
+
+        try
+        {
+            bool copied = hasText
+                ? await _clipboardService.TrySetTextAndImageAsync(
+                    ClipboardTextFormatter.Format(text, _lineBreakMode),
+                    imagePath,
+                    _lifetime.Token)
+                : await _clipboardService.TrySetImageAsync(imagePath, _lifetime.Token);
+
+            if (_lifetime.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (!copied)
+            {
+                _viewModel.SetStatus(
+                    "Could not copy — the clipboard is busy.",
+                    StatusKind.Error);
+                return;
+            }
+
+            _viewModel.SetStatus(
+                hasText
+                    ? "Text and image copied to the clipboard."
+                    : "Image copied. This snip has no text.",
+                StatusKind.Success);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (!_lifetime.IsCancellationRequested)
+            {
+                _viewModel.SetStatus(
+                    "Could not copy text and image: " + ex.Message,
+                    StatusKind.Error);
+            }
+        }
+        finally
+        {
+            if (!_lifetime.IsCancellationRequested)
+            {
+                SetBusy(false);
+            }
+        }
+    }
+
+    private string? GetSelectedImagePath()
+    {
+        HistoryListItem? item = _viewModel.SelectedItem;
+        string? imagePath = item?.Entry.ImagePath;
+
+        if (item?.HasImage != true || imagePath is null)
+        {
+            _viewModel.SetStatus("This snip has no saved image.", StatusKind.Error);
+            return null;
+        }
+
+        if (!File.Exists(imagePath))
+        {
+            _viewModel.SetStatus("The saved image is missing.", StatusKind.Error);
+            return null;
+        }
+
+        return imagePath;
     }
 
     private async void OnRerunClicked(object sender, RoutedEventArgs e)

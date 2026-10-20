@@ -29,6 +29,9 @@ public sealed class HistoryWindowSmokeTests
         string screenshotPath = Path.Combine(
             Path.GetTempPath(),
             "MegaSnip.HistoryWindowSmoke.png");
+        string narrowScreenshotPath = Path.Combine(
+            Path.GetTempPath(),
+            "MegaSnip.HistoryWindowSmoke.Narrow.png");
         string root = Path.Combine(
             Path.GetTempPath(),
             "MegaSnip.Tests",
@@ -85,23 +88,17 @@ public sealed class HistoryWindowSmokeTests
                         $"TotalCount={count}; Status={status}");
                 }
 
+                Assert.True(((Button)window.FindName("CopyTextButton")).IsEnabled);
+                Assert.True(((Button)window.FindName("CopyImageButton")).IsEnabled);
+                Assert.True(((Button)window.FindName("CopyBothButton")).IsEnabled);
+
+                RenderWindow(window, screenshotPath);
+
+                window.Width = 900;
+                window.Height = 600;
                 window.UpdateLayout();
-                var content = (FrameworkElement)window.Content;
-                var bitmap = new RenderTargetBitmap(
-                    Math.Max(1, (int)Math.Round(content.ActualWidth)),
-                    Math.Max(1, (int)Math.Round(content.ActualHeight)),
-                    96,
-                    96,
-                    PixelFormats.Pbgra32);
-                bitmap.Render(content);
-
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(bitmap));
-
-                using (FileStream stream = File.Create(screenshotPath))
-                {
-                    encoder.Save(stream);
-                }
+                DoEvents();
+                RenderWindow(window, narrowScreenshotPath);
 
                 window.Close();
                 service.Dispose();
@@ -134,6 +131,26 @@ public sealed class HistoryWindowSmokeTests
         Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The UI thread did not finish.");
         Assert.Null(failure);
         Assert.True(File.Exists(screenshotPath));
+        Assert.True(File.Exists(narrowScreenshotPath));
+    }
+
+    private static void RenderWindow(Window window, string path)
+    {
+        window.UpdateLayout();
+        var content = (FrameworkElement)window.Content;
+        var bitmap = new RenderTargetBitmap(
+            Math.Max(1, (int)Math.Round(content.ActualWidth)),
+            Math.Max(1, (int)Math.Round(content.ActualHeight)),
+            96,
+            96,
+            PixelFormats.Pbgra32);
+        bitmap.Render(content);
+
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+
+        using FileStream stream = File.Create(path);
+        encoder.Save(stream);
     }
 
     private static void Seed(HistoryService service)
@@ -238,6 +255,15 @@ public sealed class HistoryWindowSmokeTests
     {
         public Task<bool> TrySetTextAsync(
             string text,
+            CancellationToken cancellationToken = default) => Task.FromResult(true);
+
+        public Task<bool> TrySetImageAsync(
+            string imagePath,
+            CancellationToken cancellationToken = default) => Task.FromResult(true);
+
+        public Task<bool> TrySetTextAndImageAsync(
+            string text,
+            string imagePath,
             CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 }

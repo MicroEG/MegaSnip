@@ -6,7 +6,7 @@
         Width="1120"
         Height="720"
         MinWidth="900"
-        MinHeight="540"
+        MinHeight="600"
         WindowStartupLocation="CenterScreen"
         Background="#0F1115"
         FontFamily="Segoe UI"
@@ -374,8 +374,8 @@
                           Visibility="{Binding DetailVisibility}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
+                            <RowDefinition Height="3*" MinHeight="90" />
+                            <RowDefinition Height="2*" MinHeight="70" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <StackPanel>
@@ -403,7 +403,6 @@
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                         <Border Grid.Row="1"
-                                Height="210"
                                 Margin="0,14,0,0"
                                 Background="#0B0E13"
                                 CornerRadius="6"
@@ -432,25 +431,38 @@
                                  LostKeyboardFocus="OnEditorLostKeyboardFocus"
                                  AutomationProperties.Name="Recognized text" />
                         <Grid Grid.Row="3">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <TextBlock x:Name="EditorCharacterCountText"
                                        VerticalAlignment="Center"
                                        FontSize="11"
                                        Foreground="#66707F" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button x:Name="RerunButton"
-                                        Content="Re-run OCR"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Click="OnRerunClicked"
-                                        AutomationProperties.Name="Re-run OCR" />
+                            <WrapPanel Grid.Row="1"
+                                       Margin="0,8,0,0"
+                                       HorizontalAlignment="Right"
+                                       Orientation="Horizontal">
                                 <Button x:Name="CopyTextButton"
                                         Content="Copy text"
                                         Style="{StaticResource PrimaryButton}"
                                         Click="OnCopyTextClicked"
                                         AutomationProperties.Name="Copy text" />
+                                <Button x:Name="CopyImageButton"
+                                        Content="Copy image"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Click="OnCopyImageClicked"
+                                        AutomationProperties.Name="Copy image" />
+                                <Button x:Name="CopyBothButton"
+                                        Content="Copy both"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Click="OnCopyBothClicked"
+                                        AutomationProperties.Name="Copy text and image" />
+                                <Button x:Name="RerunButton"
+                                        Content="Re-run OCR"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Click="OnRerunClicked"
+                                        AutomationProperties.Name="Re-run OCR" />
                                 <Button x:Name="OpenFolderButton"
                                         Content="Open folder"
                                         Style="{StaticResource GhostButton}"
@@ -461,7 +473,7 @@
                                         Style="{StaticResource DangerButton}"
                                         Click="OnDeleteClicked"
                                         AutomationProperties.Name="Delete this snip" />
-                            </StackPanel>
+                            </WrapPanel>
                         </Grid>
                     </Grid>
                     <StackPanel HorizontalAlignment="Center"
@@ -490,7 +502,7 @@
             <TextBlock Grid.Column="1"
                        FontSize="11"
                        Foreground="#5C6678"
-                       Text="Ctrl+C copies text · Del deletes · changes save automatically" />
+                       Text="Ctrl+C text · Ctrl+Shift+C image · Del deletes · changes save automatically" />
         </Grid>
     </Grid>
     </Border>
