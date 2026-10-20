@@ -15,6 +15,16 @@ All notable changes to MegaSnip are documented in this file. This project follow
 - `IOcrService`, `IScreenCapture`, and `IClipboardService` provider seams.
 - Clipboard copying of `CF_UNICODETEXT` only, with ten retries at 100 ms intervals and explicit empty-OCR handling that preserves prior clipboard contents.
 - Non-activating success/warning/error toast with character count, **Preview** link, auto-dismiss, and hover pause.
+- Optional local history enabled by default: a SQLite index plus one folder per snip under `%APPDATA%\MegaSnip\history\`, storing recognized text and, when enabled, the captured image and thumbnail.
+- A **Don't log this** toast action that removes the just-saved entry without affecting the clipboard.
+- History window with a virtualized list, search, thumbnail and text detail pane, automatically saved text edits, and Copy text, Copy image, Copy both, Re-run OCR, Open folder, Delete, Clear all, and Export actions.
+- Multi-format image clipboard support for history entries: DIB and raw PNG, with alpha flattened to white for DIB and the existing retry behavior; **Ctrl+Shift+C** copies the selected image and **Ctrl+C** copies its text.
+- Retention cleanup at startup and every 24 hours with configurable maximum entry count, age in days, and disk usage; `0` disables an individual limit.
+- First-use history privacy notice describing what is stored, the storage folder, and that nothing leaves the PC; acknowledgement is persisted in settings.
+- Tray **Pause history for 1 hour** (with **Resume history**) and **Open history folder** commands.
+- History settings for saving text and images, delete confirmation, default double-click action, storage folder, and retention limits, including a validated move of the existing history to an empty folder.
+- Settings schema v2 migration that adds history defaults to existing schema v1 files.
+- GitHub repository link in the README and Settings footer.
 - Preview/correction window with captured-image thumbnail, editable text, character count, **Copy**, **Copy & Close**, and **Re-run OCR**.
 - Settings window and JSON persistence at `%APPDATA%\MegaSnip\settings.json`, covering hotkey, OCR language, line-break mode, auto-preview, sound feedback, and Windows startup.
 - Hotkey capture with validation and cancel-only-on-Escape behavior, plus rollback when a new hotkey, startup registration, or settings save fails.

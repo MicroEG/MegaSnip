@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Threading;
@@ -16,6 +18,7 @@ using MegaSnip.Preview;
 using MegaSnip.Settings;
 using MegaSnip.Toast;
 using MegaSnip.Tray;
+using Microsoft.Data.Sqlite;
 
 namespace MegaSnip;
 
@@ -31,6 +34,7 @@ public partial class App : Application
     private readonly IOcrService _ocrService = new WindowsOcrService();
     private readonly IClipboardService _clipboardService = new ClipboardService();
     private readonly SettingsStore _settingsStore = new();
+    private readonly HistoryPauseState _historyPause = new();
     private AppSettings _settings = new();
     private Mutex? _singleInstanceMutex;
     private Bitmap? _lastCapture;
@@ -48,6 +52,7 @@ public partial class App : Application
     private CancellationTokenSource? _ocrCancellation;
     private Task _ocrWarmUpTask = Task.CompletedTask;
     private int _captureGeneration;
+    private bool _historyPrivacyNoticeShown;
     private bool _isShuttingDown;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -71,8 +76,11 @@ public partial class App : Application
         _trayController.SnipRequested += OnSnipRequested;
         _trayController.LastResultRequested += OnLastResultRequested;
         _trayController.HistoryRequested += OnHistoryRequested;
+        _trayController.HistoryPauseToggled += OnHistoryPauseToggled;
+        _trayController.OpenHistoryFolderRequested += OnOpenHistoryFolderRequested;
         _trayController.SettingsRequested += OnSettingsRequested;
         _trayController.ExitRequested += OnExitRequested;
+        _trayController.MenuOpening += OnTrayMenuOpening;
         _trayController.SetHotkeyDisplay(_settings.Hotkey.ToString());
         _trayController.SetLastResultAvailable(false);
 
@@ -88,7 +96,9 @@ public partial class App : Application
 
         SyncStartupRegistration();
         InitializeHistory();
+        UpdateTrayHistoryOptions();
         _ocrWarmUpTask = WarmUpOcrAsync(_settings.OcrLanguageTag);
+        ShowHistoryPrivacyNoticeIfNeeded();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -109,6 +119,8 @@ public partial class App : Application
         }
 
         _activeHistoryLog?.Completion.Wait(TimeSpan.FromSeconds(2));
+        _historyService?.Dispose();
+        _historyService = null;
 
         if (_toastController is not null)
         {
@@ -139,6 +151,39 @@ public partial class App : Application
     private void OnLastResultRequested(object? sender, EventArgs e) => OpenPreview();
 
     private void OnHistoryRequested(object? sender, EventArgs e) => OpenHistory();
+
+    private void OnTrayMenuOpening(object? sender, EventArgs e) =>
+        UpdateTrayHistoryOptions();
+
+    private void OnHistoryPauseToggled(object? sender, EventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        if (_historyPause.IsPaused(now))
+        {
+            _historyPause.Resume();
+            _trayController?.ShowInfo(
+                "History resumed",
+                "New snips will be saved to history again.");
+        }
+        else
+        {
+            _historyPause.Pause(now);
+            _trayController?.ShowInfo(
+                "History paused",
+                "MegaSnip will not save snips to history for one hour.");
+        }
+
+        UpdateTrayHistoryOptions();
+    }
+
+    private void OnOpenHistoryFolderRequested(object? sender, EventArgs e) =>
+        OpenHistoryFolder();
 
     private void OnSettingsRequested(object? sender, EventArgs e) => OpenSettings();
 
@@ -420,6 +465,7 @@ public partial class App : Application
                 _settings.OcrLanguageTag,
                 _settings.LineBreakMode,
                 _settings.AskBeforeDelete,
+                _settings.DefaultHistoryAction,
                 _settings.Hotkey.ToString(),
                 SetAskBeforeDelete);
             window.Closed += OnHistoryClosed;
@@ -478,8 +524,10 @@ public partial class App : Application
             window = new SettingsWindow(
                 _settings,
                 languages,
+                () => _settings,
                 ApplySettings,
-                OnHotkeyCaptureActiveChanged);
+                OnHotkeyCaptureActiveChanged,
+                ChangeHistoryDirectoryAsync);
             window.Closed += OnSettingsClosed;
             _settingsWindow = window;
             window.Show();
@@ -502,6 +550,275 @@ public partial class App : Application
             PlayFeedback(ToastKind.Error);
             _toastController?.ShowError("MegaSnip could not open settings", ex.Message);
         }
+    }
+
+    private void UpdateTrayHistoryOptions()
+    {
+        _trayController?.SetHistoryOptions(
+            _settings.SaveHistory,
+            _historyService is not null,
+            _historyPause.IsPaused(DateTimeOffset.UtcNow));
+    }
+
+    private void OpenHistoryFolder()
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        string? directory = _historyService?.HistoryDirectory;
+
+        if (directory is null)
+        {
+            ShowHistoryError(
+                "History is unavailable",
+                "MegaSnip could not locate its history folder.");
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(directory);
+            Process.Start(
+                new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = "\"" + directory + "\"",
+                    UseShellExecute = true,
+                });
+        }
+        catch (Exception ex) when (
+            ex is Win32Exception
+                or IOException
+                or InvalidOperationException
+                or UnauthorizedAccessException)
+        {
+            ShowHistoryError("Could not open the history folder", ex.Message);
+        }
+    }
+
+    private void ShowHistoryPrivacyNoticeIfNeeded()
+    {
+        if (_isShuttingDown ||
+            _historyPrivacyNoticeShown ||
+            !_settings.SaveHistory ||
+            _settings.HistoryPrivacyNoticeAccepted)
+        {
+            return;
+        }
+
+        _historyPrivacyNoticeShown = true;
+        string directory =
+            _historyService?.HistoryDirectory ??
+            HistoryPaths.Resolve(_settings.HistoryDirectory);
+
+        var dialog = new HistoryPrivacyDialog(directory);
+
+        if (_settingsWindow is { IsVisible: true } settingsWindow)
+        {
+            dialog.Owner = settingsWindow;
+        }
+
+        bool accepted = dialog.ShowDialog() == true;
+
+        if (accepted)
+        {
+            AcceptHistoryPrivacyNotice();
+        }
+
+        if (dialog.OpenSettingsRequested)
+        {
+            OpenSettings();
+        }
+    }
+
+    private void AcceptHistoryPrivacyNotice()
+    {
+        if (_settings.HistoryPrivacyNoticeAccepted)
+        {
+            return;
+        }
+
+        AppSettings candidate = _settings.Clone();
+        candidate.HistoryPrivacyNoticeAccepted = true;
+
+        try
+        {
+            _settingsStore.Save(candidate);
+            _settings = candidate;
+        }
+        catch (Exception ex)
+        {
+            ShowHistoryError(
+                "The privacy notice could not be saved",
+                ex.Message);
+        }
+    }
+
+    private async Task<HistoryDirectoryChangeResult> ChangeHistoryDirectoryAsync(
+        string targetDirectory)
+    {
+        HistoryService? previousService = _historyService;
+
+        if (_isShuttingDown || previousService is null)
+        {
+            return HistoryDirectoryChangeResult.Failed(
+                previousService?.HistoryDirectory ??
+                    HistoryPaths.Resolve(_settings.HistoryDirectory),
+                _isShuttingDown
+                    ? "MegaSnip is closing."
+                    : "History is unavailable.");
+        }
+
+        string source = previousService.HistoryDirectory;
+        string target;
+
+        try
+        {
+            target = Path.TrimEndingDirectorySeparator(
+                Path.GetFullPath(targetDirectory));
+        }
+        catch (Exception ex) when (
+            ex is ArgumentException
+                or NotSupportedException
+                or PathTooLongException)
+        {
+            return HistoryDirectoryChangeResult.Failed(
+                source,
+                "The selected folder path is not valid: " + ex.Message);
+        }
+
+        if (HistoryDirectoryMigrator.AreSameDirectory(source, target))
+        {
+            return HistoryDirectoryChangeResult.Success(source);
+        }
+
+        await CloseHistoryForMigrationAsync();
+        await WaitForActiveHistoryLogAsync();
+
+        _historyService = null;
+        previousService.Dispose();
+        SqliteConnection.ClearAllPools();
+
+        HistoryService? newService = null;
+        bool copied = false;
+
+        try
+        {
+            await Task.Run(() => HistoryDirectoryMigrator.Copy(source, target))
+                .ConfigureAwait(true);
+            copied = true;
+
+            newService = new HistoryService(new HistoryRepository(target));
+            await newService.InitializeAsync().ConfigureAwait(true);
+
+            AppSettings candidate = _settings.Clone();
+            candidate.HistoryDirectory = HistoryDirectoryMigrator.AreSameDirectory(
+                target,
+                HistoryPaths.DefaultDirectory)
+                ? null
+                : target;
+
+            _settingsStore.Save(candidate);
+
+            _settings = candidate;
+            _historyService = newService;
+            newService = null;
+        }
+        catch (Exception ex) when (
+            ex is IOException
+                or UnauthorizedAccessException
+                or InvalidOperationException
+                or HistoryStorageException
+                or ArgumentException
+                or NotSupportedException
+                or System.Security.SecurityException)
+        {
+            newService?.Dispose();
+
+            if (copied)
+            {
+                await Task.Run(
+                        () => HistoryDirectoryMigrator.DeleteCopiedTarget(target))
+                    .ConfigureAwait(true);
+            }
+
+            await RestoreHistoryServiceAsync(source).ConfigureAwait(true);
+
+            return HistoryDirectoryChangeResult.Failed(
+                source,
+                "History could not be moved: " + ex.Message);
+        }
+
+        UpdateTrayHistoryOptions();
+
+        bool sourceRemoved = await Task.Run(
+                () => HistoryDirectoryMigrator.TryDeleteSource(source, out string? warning))
+            .ConfigureAwait(true);
+
+        return HistoryDirectoryChangeResult.Success(
+            target,
+            sourceRemoved
+                ? null
+                : "History was moved, but the old folder could not be removed: " + source);
+    }
+
+    private async Task CloseHistoryForMigrationAsync()
+    {
+        HistoryWindow? window = _historyWindow;
+
+        if (window is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await window.PrepareForMigrationAsync();
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private async Task WaitForActiveHistoryLogAsync()
+    {
+        HistoryLogOperation? operation = _activeHistoryLog;
+
+        if (operation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await operation.Completion;
+        }
+        catch (Exception)
+        {
+        }
+
+        if (ReferenceEquals(_activeHistoryLog, operation))
+        {
+            _activeHistoryLog = null;
+        }
+    }
+
+    private async Task RestoreHistoryServiceAsync(string directory)
+    {
+        try
+        {
+            var service = new HistoryService(new HistoryRepository(directory));
+            await service.InitializeAsync();
+            _historyService = service;
+        }
+        catch (Exception ex)
+        {
+            ShowHistoryError("History is unavailable", ex.Message);
+        }
+
+        UpdateTrayHistoryOptions();
     }
 
     private void OnHotkeyCaptureActiveChanged(bool capturing)
@@ -537,9 +854,23 @@ public partial class App : Application
             return "Choose how copied text should handle line breaks.";
         }
 
+        if (!Enum.IsDefined(typeof(HistoryRowAction), candidate.DefaultHistoryAction))
+        {
+            return "Choose what double-clicking a history row should do.";
+        }
+
+        if (candidate.HistoryRetention is null ||
+            candidate.HistoryRetention.MaxEntries < 0 ||
+            candidate.HistoryRetention.MaxAgeDays < 0 ||
+            candidate.HistoryRetention.MaxDiskMB < 0)
+        {
+            return "History retention limits must be zero or greater.";
+        }
+
         HotkeyGesture previousHotkey = _settings.Hotkey;
         string? previousLanguageTag = _settings.OcrLanguageTag;
         bool previousStartWithWindows = _settings.StartWithWindows;
+        bool previousSaveHistory = _settings.SaveHistory;
         bool hotkeyChanged = candidate.Hotkey != previousHotkey;
         bool startupChanged = candidate.StartWithWindows != previousStartWithWindows;
 
@@ -596,7 +927,18 @@ public partial class App : Application
         _settings = candidate;
         _trayController?.SetHotkeyDisplay(candidate.Hotkey.ToString());
         _previewWindow?.ApplySettings(candidate.OcrLanguageTag, candidate.LineBreakMode);
-        _historyWindow?.ApplySettings(candidate.OcrLanguageTag, candidate.LineBreakMode);
+        _historyWindow?.ApplySettings(
+            candidate.OcrLanguageTag,
+            candidate.LineBreakMode,
+            candidate.AskBeforeDelete,
+            candidate.DefaultHistoryAction);
+
+        if (previousSaveHistory && !candidate.SaveHistory)
+        {
+            _historyPause.Resume();
+        }
+
+        UpdateTrayHistoryOptions();
 
         if (!string.Equals(
                 candidate.OcrLanguageTag,
@@ -604,6 +946,13 @@ public partial class App : Application
                 StringComparison.OrdinalIgnoreCase))
         {
             _ocrWarmUpTask = WarmUpOcrAsync(candidate.OcrLanguageTag);
+        }
+
+        if (candidate.SaveHistory && !candidate.HistoryPrivacyNoticeAccepted)
+        {
+            Dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(ShowHistoryPrivacyNoticeIfNeeded));
         }
 
         return null;
@@ -654,6 +1003,7 @@ public partial class App : Application
             return;
         }
 
+        UpdateTrayHistoryOptions();
         _ = InitializeHistoryAsync();
     }
 
@@ -734,7 +1084,10 @@ public partial class App : Application
     private bool TryBeginHistoryLog(Bitmap capture, string monitorId, string text)
     {
         HistoryService? service = _historyService;
-        if (service is null || !_settings.SaveHistory || text.Length == 0)
+        if (service is null ||
+            !_settings.SaveHistory ||
+            _historyPause.IsPaused(DateTimeOffset.UtcNow) ||
+            text.Length == 0)
         {
             return false;
         }

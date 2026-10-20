@@ -13,6 +13,9 @@ internal sealed class TrayController : IDisposable
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _snipItem;
     private readonly ToolStripMenuItem _lastResultItem;
+    private readonly ToolStripMenuItem _historyItem;
+    private readonly ToolStripMenuItem _pauseHistoryItem;
+    private readonly ToolStripMenuItem _openHistoryFolderItem;
     private bool _disposed;
 
     public TrayController()
@@ -31,8 +34,14 @@ internal sealed class TrayController : IDisposable
         };
         _lastResultItem.Click += OnLastResultClicked;
 
-        var historyItem = new ToolStripMenuItem("History");
-        historyItem.Click += OnHistoryClicked;
+        _historyItem = new ToolStripMenuItem("History");
+        _historyItem.Click += OnHistoryClicked;
+
+        _pauseHistoryItem = new ToolStripMenuItem("Pause history for 1 hour");
+        _pauseHistoryItem.Click += OnHistoryPauseToggled;
+
+        _openHistoryFolderItem = new ToolStripMenuItem("Open history folder");
+        _openHistoryFolderItem.Click += OnOpenHistoryFolderRequested;
 
         var settingsItem = new ToolStripMenuItem("Settings");
         settingsItem.Click += OnSettingsClicked;
@@ -46,10 +55,13 @@ internal sealed class TrayController : IDisposable
         };
         _contextMenu.Items.Add(_snipItem);
         _contextMenu.Items.Add(_lastResultItem);
-        _contextMenu.Items.Add(historyItem);
+        _contextMenu.Items.Add(_historyItem);
+        _contextMenu.Items.Add(_pauseHistoryItem);
+        _contextMenu.Items.Add(_openHistoryFolderItem);
         _contextMenu.Items.Add(settingsItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(quitItem);
+        _contextMenu.Opening += OnContextMenuOpening;
 
         _notifyIcon = new NotifyIcon
         {
@@ -66,9 +78,15 @@ internal sealed class TrayController : IDisposable
 
     public event EventHandler? HistoryRequested;
 
+    public event EventHandler? HistoryPauseToggled;
+
+    public event EventHandler? OpenHistoryFolderRequested;
+
     public event EventHandler? SettingsRequested;
 
     public event EventHandler? ExitRequested;
+
+    public event EventHandler? MenuOpening;
 
     public void SetHotkeyDisplay(string display)
     {
@@ -90,22 +108,41 @@ internal sealed class TrayController : IDisposable
         _lastResultItem.Enabled = available;
     }
 
-    public void ShowBalloon(string title, string message)
+    public void SetHistoryOptions(
+        bool savingEnabled,
+        bool historyAvailable,
+        bool paused)
     {
         if (_disposed)
         {
             return;
         }
 
-        _notifyIcon.ShowBalloonTip(
-            4000,
-            title,
-            message,
-            ToolTipIcon.Warning);
+        _pauseHistoryItem.Enabled = savingEnabled;
+        _pauseHistoryItem.Text = paused
+            ? "Resume history"
+            : "Pause history for 1 hour";
+        _openHistoryFolderItem.Enabled = historyAvailable;
     }
 
+    public void ShowBalloon(string title, string message) =>
+        ShowBalloon(title, message, ToolTipIcon.Warning);
+
+    public void ShowInfo(string title, string message) =>
+        ShowBalloon(title, message, ToolTipIcon.Info);
+
     public void ShowError(string title, string message) =>
-        ShowBalloon(title, message);
+        ShowBalloon(title, message, ToolTipIcon.Warning);
+
+    private void ShowBalloon(string title, string message, ToolTipIcon icon)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _notifyIcon.ShowBalloonTip(4000, title, message, icon);
+    }
 
     public void Dispose()
     {
@@ -157,6 +194,15 @@ internal sealed class TrayController : IDisposable
 
     private void OnHistoryClicked(object? sender, EventArgs e) =>
         HistoryRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnHistoryPauseToggled(object? sender, EventArgs e) =>
+        HistoryPauseToggled?.Invoke(this, EventArgs.Empty);
+
+    private void OnOpenHistoryFolderRequested(object? sender, EventArgs e) =>
+        OpenHistoryFolderRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnContextMenuOpening(object? sender, EventArgs e) =>
+        MenuOpening?.Invoke(this, EventArgs.Empty);
 
     private void OnSettingsClicked(object? sender, EventArgs e) =>
         SettingsRequested?.Invoke(this, EventArgs.Empty);

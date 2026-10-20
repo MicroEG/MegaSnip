@@ -33,6 +33,7 @@ internal partial class HistoryWindow : Window
     private LineBreakMode _lineBreakMode;
     private string? _languageTag;
     private bool _askBeforeDelete;
+    private HistoryRowAction _defaultRowAction;
     private bool _suppressEditorChange;
     private bool _syncingSelection;
     private bool _selectionChangeInProgress;
@@ -51,6 +52,7 @@ internal partial class HistoryWindow : Window
         string? languageTag,
         LineBreakMode lineBreakMode,
         bool askBeforeDelete,
+        HistoryRowAction defaultRowAction,
         string hotkeyDisplay,
         Func<bool, string?> setAskBeforeDelete)
     {
@@ -66,6 +68,7 @@ internal partial class HistoryWindow : Window
         _languageTag = languageTag;
         _lineBreakMode = lineBreakMode;
         _askBeforeDelete = askBeforeDelete;
+        _defaultRowAction = defaultRowAction;
         _setAskBeforeDelete = setAskBeforeDelete;
         _viewModel = new HistoryViewModel(historyService, hotkeyDisplay);
 
@@ -81,10 +84,30 @@ internal partial class HistoryWindow : Window
 
     internal string? SelectedEntryId => _viewModel.SelectedEntryId;
 
-    internal void ApplySettings(string? languageTag, LineBreakMode lineBreakMode)
+    internal void ApplySettings(
+        string? languageTag,
+        LineBreakMode lineBreakMode,
+        bool askBeforeDelete,
+        HistoryRowAction defaultRowAction)
     {
         _languageTag = languageTag;
         _lineBreakMode = lineBreakMode;
+        _askBeforeDelete = askBeforeDelete;
+        _defaultRowAction = defaultRowAction;
+    }
+
+    internal async Task PrepareForMigrationAsync()
+    {
+        try
+        {
+            await _viewModel.FlushPendingSaveAsync();
+        }
+        catch (Exception)
+        {
+        }
+
+        _closeReady = true;
+        Close();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -385,6 +408,35 @@ internal partial class HistoryWindow : Window
         {
             e.Handled = true;
             _ = DeleteSelectedAsync();
+        }
+    }
+
+    private void OnListMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_operationInProgress || _viewModel.SelectedItem is null)
+        {
+            return;
+        }
+
+        if (e.OriginalSource is not DependencyObject source ||
+            ItemsControl.ContainerFromElement(HistoryList, source) is not ListBoxItem)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        switch (_defaultRowAction)
+        {
+            case HistoryRowAction.CopyText:
+                _ = CopySelectedTextAsync();
+                break;
+            case HistoryRowAction.CopyImage:
+                _ = CopySelectedImageAsync();
+                break;
+            default:
+                TextEditor.Focus();
+                break;
         }
     }
 

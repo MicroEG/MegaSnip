@@ -250,6 +250,7 @@
                              VirtualizingStackPanel.VirtualizationMode="Recycling"
                              SelectionChanged="OnListSelectionChanged"
                              PreviewKeyDown="OnListPreviewKeyDown"
+                             MouseDoubleClick="OnListMouseDoubleClick"
                              AutomationProperties.Name="Snip history list">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>

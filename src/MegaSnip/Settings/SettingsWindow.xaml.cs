@@ -1,8 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using MegaSnip.History;
 using MegaSnip.Infrastructure;
 using MegaSnip.Ocr;
 
@@ -10,29 +15,36 @@ namespace MegaSnip.Settings;
 
 internal partial class SettingsWindow : Window
 {
+    private readonly Func<AppSettings> _getCurrentSettings;
     private readonly Func<AppSettings, string?> _applySettings;
+    private readonly Func<string, Task<HistoryDirectoryChangeResult>> _changeHistoryDirectory;
     private readonly Action<bool> _setHotkeyCaptureActive;
     private readonly IReadOnlyList<OcrLanguage> _availableLanguages;
-    private readonly AppSettings _currentSettings;
     private HotkeyGesture _hotkey;
     private bool _capturingHotkey;
     private bool _isSaving;
+    private bool _isChangingHistory;
 
     internal SettingsWindow(
         AppSettings current,
         IReadOnlyList<OcrLanguage> availableLanguages,
+        Func<AppSettings> getCurrentSettings,
         Func<AppSettings, string?> applySettings,
-        Action<bool> setHotkeyCaptureActive)
+        Action<bool> setHotkeyCaptureActive,
+        Func<string, Task<HistoryDirectoryChangeResult>> changeHistoryDirectory)
     {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(availableLanguages);
+        ArgumentNullException.ThrowIfNull(getCurrentSettings);
         ArgumentNullException.ThrowIfNull(applySettings);
         ArgumentNullException.ThrowIfNull(setHotkeyCaptureActive);
+        ArgumentNullException.ThrowIfNull(changeHistoryDirectory);
 
         _availableLanguages = availableLanguages;
+        _getCurrentSettings = getCurrentSettings;
         _applySettings = applySettings;
         _setHotkeyCaptureActive = setHotkeyCaptureActive;
-        _currentSettings = current;
+        _changeHistoryDirectory = changeHistoryDirectory;
         _hotkey = current.Hotkey;
 
         InitializeComponent();
@@ -40,10 +52,23 @@ internal partial class SettingsWindow : Window
         HotkeyBox.Text = _hotkey.ToString();
         PopulateLanguages(current.OcrLanguageTag);
         PopulateLineBreakModes(current.LineBreakMode);
+        PopulateHistoryActions(current.DefaultHistoryAction);
         AutoPreviewCheck.IsChecked = current.AutoPreview;
         SoundFeedbackCheck.IsChecked = current.SoundFeedback;
         StartWithWindowsCheck.IsChecked = current.StartWithWindows;
+        SaveHistoryCheck.IsChecked = current.SaveHistory;
+        SaveHistoryImagesCheck.IsChecked = current.SaveHistoryImages;
+        AskBeforeDeleteCheck.IsChecked = current.AskBeforeDelete;
+        HistoryPathText.Text = HistoryPaths.Resolve(current.HistoryDirectory);
 
+        HistoryRetentionSettings retention =
+            current.HistoryRetention ?? new HistoryRetentionSettings();
+        AutoCleanupCheck.IsChecked = retention.AutoCleanupEnabled;
+        MaxEntriesBox.Text = retention.MaxEntries.ToString(CultureInfo.InvariantCulture);
+        MaxAgeDaysBox.Text = retention.MaxAgeDays.ToString(CultureInfo.InvariantCulture);
+        MaxDiskMBBox.Text = retention.MaxDiskMB.ToString(CultureInfo.InvariantCulture);
+
+        UpdateHistoryControlStates();
         Loaded += OnLoaded;
     }
 
@@ -51,6 +76,17 @@ internal partial class SettingsWindow : Window
     {
         base.OnSourceInitialized(e);
         WindowTheme.ApplyDarkTitleBar(this);
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (_isChangingHistory)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        base.OnClosing(e);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -102,9 +138,39 @@ internal partial class SettingsWindow : Window
             ?? options[0];
     }
 
+    private void PopulateHistoryActions(HistoryRowAction selectedAction)
+    {
+        var options = new[]
+        {
+            new HistoryActionOption(HistoryRowAction.OpenDetail, "Open details"),
+            new HistoryActionOption(HistoryRowAction.CopyText, "Copy text"),
+            new HistoryActionOption(HistoryRowAction.CopyImage, "Copy image"),
+        };
+
+        DefaultHistoryActionCombo.ItemsSource = options;
+        DefaultHistoryActionCombo.SelectedItem =
+            options.FirstOrDefault(option => option.Action == selectedAction)
+            ?? options[0];
+    }
+
+    private void OnSaveHistoryChanged(object sender, RoutedEventArgs e) =>
+        UpdateHistoryControlStates();
+
+    private void OnAutoCleanupChanged(object sender, RoutedEventArgs e) =>
+        UpdateHistoryControlStates();
+
+    private void UpdateHistoryControlStates()
+    {
+        bool saveHistory = SaveHistoryCheck.IsChecked == true;
+
+        HistoryOptionsPanel.IsEnabled = saveHistory;
+        AutoCleanupOptionsPanel.IsEnabled =
+            saveHistory && AutoCleanupCheck.IsChecked == true;
+    }
+
     private void OnCaptureHotkeyClicked(object sender, RoutedEventArgs e)
     {
-        if (_isSaving)
+        if (_isSaving || _isChangingHistory)
         {
             return;
         }
@@ -215,12 +281,106 @@ internal partial class SettingsWindow : Window
         return modifiers;
     }
 
-    private void OnSaveClicked(object sender, RoutedEventArgs e)
+    private async void OnChangeHistoryFolderClicked(object sender, RoutedEventArgs e)
     {
-        if (_isSaving)
+        if (_isSaving || _isChangingHistory)
         {
             return;
         }
+
+        string currentPath = HistoryPathText.Text;
+
+        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = "Choose an empty folder for MegaSnip history",
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = true,
+            SelectedPath = currentPath,
+        };
+
+        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK ||
+            string.IsNullOrWhiteSpace(dialog.SelectedPath))
+        {
+            return;
+        }
+
+        string target = dialog.SelectedPath;
+        SetHistoryChangeBusy(true);
+        SetPathStatus("Moving history…", PathStatusKind.Info);
+
+        try
+        {
+            HistoryDirectoryChangeResult result =
+                await _changeHistoryDirectory(target);
+
+            if (result.Error is not null)
+            {
+                SetPathStatus(result.Error, PathStatusKind.Error);
+                return;
+            }
+
+            HistoryPathText.Text = result.Directory;
+
+            bool moved = !HistoryDirectoryMigrator.AreSameDirectory(
+                currentPath,
+                result.Directory);
+            string message = result.Warning ??
+                (moved
+                    ? "History moved to the new folder."
+                    : "History is already stored in this folder.");
+
+            SetPathStatus(
+                message,
+                result.Warning is null
+                    ? PathStatusKind.Success
+                    : PathStatusKind.Warning);
+        }
+        catch (Exception ex)
+        {
+            SetPathStatus("Could not move history: " + ex.Message, PathStatusKind.Error);
+        }
+        finally
+        {
+            SetHistoryChangeBusy(false);
+        }
+    }
+
+    private void SetHistoryChangeBusy(bool busy)
+    {
+        _isChangingHistory = busy;
+        FormPanel.IsEnabled = !busy;
+        SaveButton.IsEnabled = !busy;
+        CancelButton.IsEnabled = !busy;
+        Cursor = busy ? Cursors.Wait : null;
+
+        if (!busy)
+        {
+            UpdateHistoryControlStates();
+        }
+    }
+
+    private void SetPathStatus(string message, PathStatusKind kind)
+    {
+        HistoryPathStatusText.Text = message;
+        HistoryPathStatusText.Foreground = (System.Windows.Media.Brush)FindResource(
+            kind switch
+            {
+                PathStatusKind.Success => "PathSuccessBrush",
+                PathStatusKind.Warning => "PathWarningBrush",
+                PathStatusKind.Error => "PathErrorBrush",
+                _ => "PathInfoBrush",
+            });
+        HistoryPathStatusText.Visibility = Visibility.Visible;
+    }
+
+    private void OnSaveClicked(object sender, RoutedEventArgs e)
+    {
+        if (_isSaving || _isChangingHistory)
+        {
+            return;
+        }
+
+        ClearError();
 
         if (_capturingHotkey)
         {
@@ -245,13 +405,36 @@ internal partial class SettingsWindow : Window
             return;
         }
 
-        AppSettings candidate = _currentSettings.Clone();
+        if (DefaultHistoryActionCombo.SelectedItem is not HistoryActionOption historyAction)
+        {
+            ShowError("Choose what double-clicking a history row should do.");
+            return;
+        }
+
+        if (!TryReadRetention(
+                out int maxEntries,
+                out int maxAgeDays,
+                out int maxDiskMb))
+        {
+            return;
+        }
+
+        AppSettings candidate = _getCurrentSettings().Clone();
         candidate.Hotkey = _hotkey;
         candidate.OcrLanguageTag = language.Tag;
         candidate.LineBreakMode = lineBreak.Mode;
         candidate.AutoPreview = AutoPreviewCheck.IsChecked == true;
         candidate.SoundFeedback = SoundFeedbackCheck.IsChecked == true;
         candidate.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
+        candidate.SaveHistory = SaveHistoryCheck.IsChecked == true;
+        candidate.SaveHistoryImages = SaveHistoryImagesCheck.IsChecked == true;
+        candidate.AskBeforeDelete = AskBeforeDeleteCheck.IsChecked == true;
+        candidate.DefaultHistoryAction = historyAction.Action;
+        candidate.HistoryRetention ??= new HistoryRetentionSettings();
+        candidate.HistoryRetention.AutoCleanupEnabled = AutoCleanupCheck.IsChecked == true;
+        candidate.HistoryRetention.MaxEntries = maxEntries;
+        candidate.HistoryRetention.MaxAgeDays = maxAgeDays;
+        candidate.HistoryRetention.MaxDiskMB = maxDiskMb;
 
         _isSaving = true;
         SaveButton.IsEnabled = false;
@@ -283,6 +466,35 @@ internal partial class SettingsWindow : Window
         }
     }
 
+    private bool TryReadRetention(
+        out int maxEntries,
+        out int maxAgeDays,
+        out int maxDiskMb)
+    {
+        bool entriesValid = TryParseLimit(MaxEntriesBox.Text, out maxEntries);
+        bool ageValid = TryParseLimit(MaxAgeDaysBox.Text, out maxAgeDays);
+        bool diskValid = TryParseLimit(MaxDiskMBBox.Text, out maxDiskMb);
+
+        if (!entriesValid || !ageValid || !diskValid)
+        {
+            ShowError("Retention limits must be whole numbers of 0 or more.");
+            return false;
+        }
+
+        MaxEntriesBox.Text = maxEntries.ToString(CultureInfo.InvariantCulture);
+        MaxAgeDaysBox.Text = maxAgeDays.ToString(CultureInfo.InvariantCulture);
+        MaxDiskMBBox.Text = maxDiskMb.ToString(CultureInfo.InvariantCulture);
+        return true;
+    }
+
+    private static bool TryParseLimit(string text, out int value) =>
+        int.TryParse(
+            text.Trim(),
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out value) &&
+        value >= 0;
+
     private void OnCancelClicked(object sender, RoutedEventArgs e)
     {
         Close();
@@ -300,12 +512,27 @@ internal partial class SettingsWindow : Window
         ErrorText.Visibility = Visibility.Collapsed;
     }
 
+    private enum PathStatusKind
+    {
+        Info,
+        Success,
+        Warning,
+        Error,
+    }
+
     private sealed record LanguageOption(string? Tag, string DisplayName)
     {
         public override string ToString() => DisplayName;
     }
 
     private sealed record LineBreakOption(LineBreakMode Mode, string DisplayName)
+    {
+        public override string ToString() => DisplayName;
+    }
+
+    private sealed record HistoryActionOption(
+        HistoryRowAction Action,
+        string DisplayName)
     {
         public override string ToString() => DisplayName;
     }

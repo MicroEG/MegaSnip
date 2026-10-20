@@ -55,6 +55,7 @@ public sealed class HistoryWindowSmokeTests
                     "en-US",
                     LineBreakMode.Preserve,
                     askBeforeDelete: false,
+                    HistoryRowAction.OpenDetail,
                     "Ctrl+Alt+T",
                     _ => null);
 
