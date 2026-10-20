@@ -13,6 +13,7 @@ internal partial class SettingsWindow : Window
     private readonly Func<AppSettings, string?> _applySettings;
     private readonly Action<bool> _setHotkeyCaptureActive;
     private readonly IReadOnlyList<OcrLanguage> _availableLanguages;
+    private readonly AppSettings _currentSettings;
     private HotkeyGesture _hotkey;
     private bool _capturingHotkey;
     private bool _isSaving;
@@ -31,6 +32,7 @@ internal partial class SettingsWindow : Window
         _availableLanguages = availableLanguages;
         _applySettings = applySettings;
         _setHotkeyCaptureActive = setHotkeyCaptureActive;
+        _currentSettings = current;
         _hotkey = current.Hotkey;
 
         InitializeComponent();
@@ -243,15 +245,13 @@ internal partial class SettingsWindow : Window
             return;
         }
 
-        var candidate = new AppSettings
-        {
-            Hotkey = _hotkey,
-            OcrLanguageTag = language.Tag,
-            LineBreakMode = lineBreak.Mode,
-            AutoPreview = AutoPreviewCheck.IsChecked == true,
-            SoundFeedback = SoundFeedbackCheck.IsChecked == true,
-            StartWithWindows = StartWithWindowsCheck.IsChecked == true,
-        };
+        AppSettings candidate = _currentSettings.Clone();
+        candidate.Hotkey = _hotkey;
+        candidate.OcrLanguageTag = language.Tag;
+        candidate.LineBreakMode = lineBreak.Mode;
+        candidate.AutoPreview = AutoPreviewCheck.IsChecked == true;
+        candidate.SoundFeedback = SoundFeedbackCheck.IsChecked == true;
+        candidate.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
 
         _isSaving = true;
         SaveButton.IsEnabled = false;

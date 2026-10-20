@@ -39,6 +39,13 @@ internal sealed class AppSettings
 
     public bool HistoryPrivacyNoticeAccepted { get; set; }
 
+    internal AppSettings Clone()
+    {
+        var clone = (AppSettings)MemberwiseClone();
+        clone.HistoryRetention = HistoryRetention.Clone();
+        return clone;
+    }
+
     internal void ApplyMigrations()
     {
         if (SchemaVersion <= 0)

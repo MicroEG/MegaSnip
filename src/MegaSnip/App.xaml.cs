@@ -41,6 +41,7 @@ public partial class App : Application
     private SelectionOverlayController? _overlayController;
     private PreviewWindow? _previewWindow;
     private SettingsWindow? _settingsWindow;
+    private HistoryWindow? _historyWindow;
     private HistoryService? _historyService;
     private HistoryLogOperation? _activeHistoryLog;
     private DispatcherTimer? _historyPruneTimer;
@@ -69,6 +70,7 @@ public partial class App : Application
         _trayController = new TrayController();
         _trayController.SnipRequested += OnSnipRequested;
         _trayController.LastResultRequested += OnLastResultRequested;
+        _trayController.HistoryRequested += OnHistoryRequested;
         _trayController.SettingsRequested += OnSettingsRequested;
         _trayController.ExitRequested += OnExitRequested;
         _trayController.SetHotkeyDisplay(_settings.Hotkey.ToString());
@@ -96,6 +98,7 @@ public partial class App : Application
         _ocrCancellation?.Cancel();
         CloseOverlay();
         ClosePreview();
+        CloseHistory();
         CloseSettings();
 
         if (_historyPruneTimer is not null)
@@ -134,6 +137,8 @@ public partial class App : Application
     private void OnSnipRequested(object? sender, EventArgs e) => BeginSnip();
 
     private void OnLastResultRequested(object? sender, EventArgs e) => OpenPreview();
+
+    private void OnHistoryRequested(object? sender, EventArgs e) => OpenHistory();
 
     private void OnSettingsRequested(object? sender, EventArgs e) => OpenSettings();
 
@@ -381,6 +386,66 @@ public partial class App : Application
         }
     }
 
+    private void OpenHistory()
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        HistoryService? service = _historyService;
+        if (service is null)
+        {
+            ShowHistoryError(
+                "History is unavailable",
+                "MegaSnip could not open its history storage.");
+            return;
+        }
+
+        if (_historyWindow is not null)
+        {
+            _historyWindow.Activate();
+            return;
+        }
+
+        HistoryWindow? window = null;
+
+        try
+        {
+            _toastController?.Dismiss();
+            window = new HistoryWindow(
+                service,
+                _ocrService,
+                _clipboardService,
+                _settings.OcrLanguageTag,
+                _settings.LineBreakMode,
+                _settings.AskBeforeDelete,
+                _settings.Hotkey.ToString(),
+                SetAskBeforeDelete);
+            window.Closed += OnHistoryClosed;
+            _historyWindow = window;
+            window.Show();
+            window.Activate();
+        }
+        catch (Exception ex)
+        {
+            if (window is not null)
+            {
+                window.Closed -= OnHistoryClosed;
+
+                if (ReferenceEquals(_historyWindow, window))
+                {
+                    _historyWindow = null;
+                }
+
+                window.Close();
+            }
+
+            PlayFeedback(ToastKind.Error);
+            ShowHistoryError("MegaSnip could not open history", ex.Message);
+        }
+    }
+
     private void OpenSettings()
     {
         if (_isShuttingDown)
@@ -531,6 +596,7 @@ public partial class App : Application
         _settings = candidate;
         _trayController?.SetHotkeyDisplay(candidate.Hotkey.ToString());
         _previewWindow?.ApplySettings(candidate.OcrLanguageTag, candidate.LineBreakMode);
+        _historyWindow?.ApplySettings(candidate.OcrLanguageTag, candidate.LineBreakMode);
 
         if (!string.Equals(
                 candidate.OcrLanguageTag,
@@ -540,6 +606,34 @@ public partial class App : Application
             _ocrWarmUpTask = WarmUpOcrAsync(candidate.OcrLanguageTag);
         }
 
+        return null;
+    }
+
+    private string? SetAskBeforeDelete(bool ask)
+    {
+        if (_isShuttingDown)
+        {
+            return "MegaSnip is closing.";
+        }
+
+        if (_settings.AskBeforeDelete == ask)
+        {
+            return null;
+        }
+
+        AppSettings candidate = _settings.Clone();
+        candidate.AskBeforeDelete = ask;
+
+        try
+        {
+            _settingsStore.Save(candidate);
+        }
+        catch (Exception ex)
+        {
+            return "Settings could not be saved: " + ex.Message;
+        }
+
+        _settings = candidate;
         return null;
     }
 
@@ -624,7 +718,9 @@ public partial class App : Application
 
         try
         {
-            await service.PruneAsync(_settings.HistoryRetention, protectedEntryId: null);
+            await service.PruneAsync(
+                _settings.HistoryRetention,
+                _historyWindow?.SelectedEntryId);
         }
         catch (Exception ex)
         {
@@ -819,6 +915,21 @@ public partial class App : Application
         }
     }
 
+    private void OnHistoryClosed(object? sender, EventArgs e)
+    {
+        if (sender is not HistoryWindow window)
+        {
+            return;
+        }
+
+        window.Closed -= OnHistoryClosed;
+
+        if (ReferenceEquals(_historyWindow, window))
+        {
+            _historyWindow = null;
+        }
+    }
+
     private void CloseOverlay()
     {
         SelectionOverlayController? overlay = _overlayController;
@@ -844,6 +955,19 @@ public partial class App : Application
         _previewWindow = null;
         preview.Closed -= OnPreviewClosed;
         preview.Close();
+    }
+
+    private void CloseHistory()
+    {
+        HistoryWindow? window = _historyWindow;
+        if (window is null)
+        {
+            return;
+        }
+
+        _historyWindow = null;
+        window.Closed -= OnHistoryClosed;
+        window.Close();
     }
 
     private void CloseSettings()

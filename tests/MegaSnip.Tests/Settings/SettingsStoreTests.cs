@@ -227,4 +227,33 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.Null(settings.OcrLanguageTag);
     }
+
+    [Fact]
+    public void Clone_CopiesHistorySettingsIndependently()
+    {
+        var original = new AppSettings
+        {
+            SaveHistory = false,
+            AskBeforeDelete = false,
+            HistoryDirectory = @"C:\History",
+            HistoryRetention = new HistoryRetentionSettings
+            {
+                AutoCleanupEnabled = false,
+                MaxEntries = 12,
+                MaxAgeDays = 3,
+                MaxDiskMB = 8,
+            },
+        };
+
+        AppSettings clone = original.Clone();
+        clone.AskBeforeDelete = true;
+        clone.HistoryRetention.MaxEntries = 99;
+
+        Assert.False(original.AskBeforeDelete);
+        Assert.Equal(12, original.HistoryRetention.MaxEntries);
+        Assert.True(clone.AskBeforeDelete);
+        Assert.Equal(99, clone.HistoryRetention.MaxEntries);
+        Assert.Equal(original.HistoryDirectory, clone.HistoryDirectory);
+        Assert.Equal(original.SaveHistory, clone.SaveHistory);
+    }
 }

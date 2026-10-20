@@ -16,6 +16,9 @@ internal sealed class HistoryRetentionSettings
 
     public int MaxDiskMB { get; set; } = DefaultMaxDiskMB;
 
+    internal HistoryRetentionSettings Clone() =>
+        (HistoryRetentionSettings)MemberwiseClone();
+
     internal void Normalize()
     {
         MaxEntries = Math.Max(0, MaxEntries);

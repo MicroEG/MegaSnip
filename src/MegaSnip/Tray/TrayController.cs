@@ -31,6 +31,9 @@ internal sealed class TrayController : IDisposable
         };
         _lastResultItem.Click += OnLastResultClicked;
 
+        var historyItem = new ToolStripMenuItem("History");
+        historyItem.Click += OnHistoryClicked;
+
         var settingsItem = new ToolStripMenuItem("Settings");
         settingsItem.Click += OnSettingsClicked;
 
@@ -43,6 +46,7 @@ internal sealed class TrayController : IDisposable
         };
         _contextMenu.Items.Add(_snipItem);
         _contextMenu.Items.Add(_lastResultItem);
+        _contextMenu.Items.Add(historyItem);
         _contextMenu.Items.Add(settingsItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(quitItem);
@@ -59,6 +63,8 @@ internal sealed class TrayController : IDisposable
     public event EventHandler? SnipRequested;
 
     public event EventHandler? LastResultRequested;
+
+    public event EventHandler? HistoryRequested;
 
     public event EventHandler? SettingsRequested;
 
@@ -148,6 +154,9 @@ internal sealed class TrayController : IDisposable
 
     private void OnLastResultClicked(object? sender, EventArgs e) =>
         LastResultRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnHistoryClicked(object? sender, EventArgs e) =>
+        HistoryRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnSettingsClicked(object? sender, EventArgs e) =>
         SettingsRequested?.Invoke(this, EventArgs.Empty);
