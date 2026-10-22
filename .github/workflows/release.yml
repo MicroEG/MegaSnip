@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and publish (for example v0.2.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Resolve tag and version
+        id: release
+        shell: pwsh
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $tag = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+              "$env:INPUT_TAG".Trim()
+          } else {
+              "$env:GITHUB_REF_NAME".Trim()
+          }
+
+          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
+              throw "Release tags must look like v1.2.3 (received '$tag')."
+          }
+
+          "TAG=$tag" >> $env:GITHUB_ENV
+          "VERSION=$($tag.Substring(1))" >> $env:GITHUB_ENV
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify project version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          [xml]$project = Get-Content -LiteralPath 'src/MegaSnip/MegaSnip.csproj'
+          $projectVersion = $project.Project.PropertyGroup |
+              ForEach-Object { $_.Version } |
+              Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+              Select-Object -First 1
+
+          if ("$projectVersion".Trim() -ne $env:VERSION) {
+              throw "Tag $env:TAG does not match <Version>$projectVersion</Version> in src/MegaSnip/MegaSnip.csproj. Bump the project version before tagging."
+          }
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Build.props
+
+      - name: Restore
+        run: dotnet restore MegaSnip.sln
+
+      - name: Build
+        run: dotnet build MegaSnip.sln -c Release --no-restore
+
+      # Hosted Windows Server images do not guarantee a Windows OCR language
+      # pack, so the environment-dependent OCR tests run locally instead.
+      - name: Test
+        run: dotnet test MegaSnip.sln -c Release --no-build --filter "FullyQualifiedName!~MegaSnip.Tests.Ocr.WindowsOcrServiceTests"
+
+      - name: Publish x64
+        shell: pwsh
+        run: ./build/publish.ps1 -RuntimeIdentifier win-x64 -OutputDirectory dist
+
+      - name: Publish Arm64
+        shell: pwsh
+        run: ./build/publish.ps1 -RuntimeIdentifier win-arm64 -OutputDirectory dist
+
+      - name: Stage release assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path release-assets -Force | Out-Null
+
+          Copy-Item -LiteralPath "dist/MegaSnip-$env:VERSION-win-x64/MegaSnip.exe" -Destination "release-assets/MegaSnip-$env:VERSION-win-x64.exe"
+          Copy-Item -LiteralPath "dist/MegaSnip-$env:VERSION-win-arm64/MegaSnip.exe" -Destination "release-assets/MegaSnip-$env:VERSION-win-arm64.exe"
+
+          Get-ChildItem -LiteralPath release-assets |
+              Select-Object Name, Length |
+              Format-Table -AutoSize
+
+      - name: Create or update GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assets = @(
+              Get-ChildItem -LiteralPath release-assets -File |
+                  ForEach-Object { $_.FullName })
+
+          gh release view $env:TAG --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+              gh release upload $env:TAG @assets --clobber
+          } else {
+              gh release create $env:TAG @assets `
+                  --verify-tag `
+                  --title "MegaSnip $env:VERSION" `
+                  --generate-notes
+          }
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Creating or updating the GitHub release failed with exit code $LASTEXITCODE."
+          }

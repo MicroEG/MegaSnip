@@ -113,7 +113,7 @@ Updates are manual and optional. Choose **Check for updates…** from the tray m
 ## Offline and privacy
 
 - OCR, capture, history, and settings work fully offline. The only outbound request is the optional manual update check described above.
-- That request is a `GET` to `https://api.github.com/repos/MicroEG/MegaSnip/releases/latest` with a `MegaSnip/<version>` user agent. It does not include captures, history, settings, filenames, or any identifier. As with any web request, GitHub can see your IP address and the app version.
+- That request is a `GET` to `https://api.github.com/repos/MicroEG/MegaSnip/releases/latest` with a `MegaSnip/<version>` user agent. It does not include captures, history, settings, filenames, or account credentials. As with any web request, GitHub can see your IP address and the app version.
 - Nothing is uploaded, downloaded, or telemetered automatically.
 - Screen pixels are captured only after a selection is completed and only for the selected rectangle.
 - The latest capture is held in memory for the toast preview and **Last result**. It is discarded when MegaSnip exits.
@@ -152,6 +152,18 @@ dist\MegaSnip-<version>-win-x64\MegaSnip.exe
 
 Use `-RuntimeIdentifier win-arm64` for Windows on Arm. The SQLite native library is embedded for self-extraction, so the executable remains a single file. No installer is produced; the executable is portable. The build is not code-signed, so Windows SmartScreen may show a warning on first launch.
 
+### Automated releases
+
+The workflow at `.github/workflows/release.yml` builds and publishes a GitHub release from a version tag.
+
+1. Update `<Version>` in `src/MegaSnip/MegaSnip.csproj` and add the matching `CHANGELOG.md` entry.
+2. Commit and push the change.
+3. Create and push the tag, for example `git tag v0.2.0` and `git push origin v0.2.0`.
+
+The workflow rejects a tag that does not match the project version. It runs the test suite, publishes `win-x64` and `win-arm64` single-file executables, and creates the GitHub release with `MegaSnip-<version>-<rid>.exe` assets and generated release notes. Re-running the workflow manually with an existing tag uploads the assets again and replaces existing files. No repository secrets are required; the workflow uses the built-in `GITHUB_TOKEN` with `contents: write` permission.
+
+The release workflow skips the environment-dependent Windows OCR tests because hosted Windows Server images do not guarantee an OCR language pack. Run `dotnet test` locally to include them.
+
 ## Project layout
 
 ```text
@@ -170,6 +182,7 @@ src/MegaSnip/
   Updates/                     GitHub release check, version comparison, update dialog
 tests/MegaSnip.Tests/          xUnit tests and fixed OCR fixture
 build/                         Icon generation and publish scripts
+.github/workflows/             Tag-triggered release automation
 ```
 
 ## How it works

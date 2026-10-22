@@ -10,6 +10,7 @@ All notable changes to MegaSnip are documented in this file. This project follow
 - Version-tag parsing and numeric comparison, including `v` prefixes and pre-release or build suffixes, with safe fallback URL handling and friendly network, timeout, and rate-limit messages.
 - Tests for release parsing, version comparison, and the update dialog's success and failure states.
 - README updates documenting manual update checks and the exact outbound request.
+- GitHub Actions release workflow triggered by `v*` tags or a manual dispatch of an existing tag. It validates the tag against the project version, builds and tests the solution, publishes `win-x64` and `win-arm64` single-file executables, and creates or updates the GitHub release with generated notes and assets.
 
 ## [0.1.0] - 2026-10-21
 
