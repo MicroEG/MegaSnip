@@ -6,7 +6,7 @@
 
 MegaSnip is a tray-only Windows utility that turns text on your screen into plain text on your clipboard. Press a hotkey, drag a box around the text, and MegaSnip recognizes it locally with Windows OCR and copies it.
 
-Everything runs offline. There are no cloud calls, API keys, telemetry, analytics, or network requests.
+MegaSnip runs offline. OCR, capture, history, and settings never use the network. The only optional request is a user-initiated update check against the public GitHub Releases API; there are no automatic checks, cloud calls, API keys, telemetry, or analytics.
 
 Repository: [github.com/MicroEG/MegaSnip](https://github.com/MicroEG/MegaSnip)
 
@@ -21,6 +21,7 @@ Repository: [github.com/MicroEG/MegaSnip](https://github.com/MicroEG/MegaSnip)
 - Optional preview window with the captured thumbnail, editable text, **Copy**, **Copy & Close**, and **Re-run OCR**.
 - Per-monitor DPI awareness v2, multi-monitor layouts (including negative coordinates), and a 5×5 pixel minimum selection.
 - Optional local history with text and captured images, search, editing, copy, export, retention limits, and one-hour pause.
+- Optional manual **Check for updates** against the public GitHub Releases API, run only when you choose it. No background checks, downloads, or self-updating.
 - Single instance; launching a second copy exits immediately.
 - Settings persist to `%APPDATA%\MegaSnip\settings.json`.
 - Optional start with Windows through the current user's `Run` key; no administrator rights required.
@@ -53,6 +54,7 @@ Tray menu:
 | **History** | Opens the history window. |
 | **Pause history for 1 hour** | Stops saving new snips to history for one hour. While paused the item becomes **Resume history**. |
 | **Open history folder** | Opens the current history folder in File Explorer. |
+| **Check for updates…** | Asks GitHub for the latest published release and links to its release page. Nothing is checked automatically. |
 | **Settings** | Opens the settings window. |
 | **Quit** | Exits MegaSnip. |
 
@@ -98,9 +100,21 @@ Changes are applied when you press **Save**:
 
 Settings are validated before they are committed. If a new hotkey cannot be registered, or the startup setting or settings file cannot be updated, the previous values are restored and the error is shown in the window. A failed history folder move restores the previous history location and leaves the original data untouched.
 
+## Updates
+
+Updates are manual and optional. Choose **Check for updates…** from the tray menu to compare the installed version with the latest published release on GitHub.
+
+- The check is a single HTTPS request to the public GitHub Releases API. It runs only after you choose the command; MegaSnip never checks at startup, on a timer, or in the background.
+- The dialog shows the installed version, whether a newer release exists, and the release notes. **Open release page** opens the GitHub page in your default browser.
+- MegaSnip does not download, install, or self-update. You choose whether to download anything.
+- The result can be **up to date**, **update available**, or **not comparable** when a release tag is not a numeric version. Network failures and GitHub rate limits are shown as readable messages.
+- Only the latest non-draft, non-prerelease release is considered.
+
 ## Offline and privacy
 
-- No network capability is used at runtime. Nothing is uploaded, downloaded, or telemetered.
+- OCR, capture, history, and settings work fully offline. The only outbound request is the optional manual update check described above.
+- That request is a `GET` to `https://api.github.com/repos/MicroEG/MegaSnip/releases/latest` with a `MegaSnip/<version>` user agent. It does not include captures, history, settings, filenames, or any identifier. As with any web request, GitHub can see your IP address and the app version.
+- Nothing is uploaded, downloaded, or telemetered automatically.
 - Screen pixels are captured only after a selection is completed and only for the selected rectangle.
 - The latest capture is held in memory for the toast preview and **Last result**. It is discarded when MegaSnip exits.
 - During a normal snip, only text is written to the clipboard. The history window can explicitly copy a saved image or text and image together.
@@ -120,7 +134,7 @@ dotnet build MegaSnip.sln -c Release
 dotnet test MegaSnip.sln -c Release
 ```
 
-The solution builds with warnings treated as errors. Tests cover clipboard retry behavior and image formats, line-break formatting, OCR post-processing, settings round-trips, corruption recovery, and schema migration, hotkey validation, history storage and retention, history directory migration, pause state, export, and OCR of a fixed PNG fixture.
+The solution builds with warnings treated as errors. Tests cover clipboard retry behavior and image formats, line-break formatting, OCR post-processing, settings round-trips, corruption recovery, and schema migration, hotkey validation, history storage and retention, history directory migration, pause state, export, update release parsing and version comparison, the update dialog states, and OCR of a fixed PNG fixture.
 
 The OCR fixture test uses the installed Windows OCR engine with `en-US`; install that language pack if it is missing. The other tests use temporary folders and do not touch the real clipboard, the registry, or the user's settings or history.
 
@@ -153,6 +167,7 @@ src/MegaSnip/
   Settings/                    Settings model, JSON store, startup registration, settings window
   Toast/                       Non-activating result toast
   Tray/                        NotifyIcon and context menu
+  Updates/                     GitHub release check, version comparison, update dialog
 tests/MegaSnip.Tests/          xUnit tests and fixed OCR fixture
 build/                         Icon generation and publish scripts
 ```

@@ -18,6 +18,7 @@ using MegaSnip.Preview;
 using MegaSnip.Settings;
 using MegaSnip.Toast;
 using MegaSnip.Tray;
+using MegaSnip.Updates;
 using Microsoft.Data.Sqlite;
 
 namespace MegaSnip;
@@ -78,6 +79,7 @@ public partial class App : Application
         _trayController.HistoryRequested += OnHistoryRequested;
         _trayController.HistoryPauseToggled += OnHistoryPauseToggled;
         _trayController.OpenHistoryFolderRequested += OnOpenHistoryFolderRequested;
+        _trayController.CheckForUpdatesRequested += OnCheckForUpdatesRequested;
         _trayController.SettingsRequested += OnSettingsRequested;
         _trayController.ExitRequested += OnExitRequested;
         _trayController.MenuOpening += OnTrayMenuOpening;
@@ -184,6 +186,47 @@ public partial class App : Application
 
     private void OnOpenHistoryFolderRequested(object? sender, EventArgs e) =>
         OpenHistoryFolder();
+
+    private void OnCheckForUpdatesRequested(object? sender, EventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        Version currentVersion =
+            typeof(App).Assembly.GetName().Version ?? new Version(0, 0, 0);
+
+        try
+        {
+            var window = new UpdateWindow(
+                currentVersion,
+                cancellationToken =>
+                    UpdateService.CheckAsync(currentVersion, cancellationToken));
+
+            Window? owner = _settingsWindow is { IsVisible: true }
+                ? _settingsWindow
+                : _historyWindow is { IsVisible: true }
+                    ? _historyWindow
+                    : _previewWindow is { IsVisible: true }
+                        ? _previewWindow
+                        : null;
+
+            if (owner is not null)
+            {
+                window.Owner = owner;
+                window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            }
+
+            window.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            _toastController?.ShowError(
+                "MegaSnip could not open the update check",
+                ex.Message);
+        }
+    }
 
     private void OnSettingsRequested(object? sender, EventArgs e) => OpenSettings();
 

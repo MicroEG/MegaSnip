@@ -1,0 +1,173 @@
+<Window x:Class="MegaSnip.Updates.UpdateWindow"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MegaSnip updates"
+        Width="540"
+        SizeToContent="Height"
+        MaxHeight="680"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        Background="#0F1115"
+        FontFamily="Segoe UI"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Grayscale">
+    <Window.Resources>
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#222833" />
+            <Setter Property="Foreground" Value="#E8EDF4" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#2C3542" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#36404F" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryButton"
+               TargetType="Button"
+               BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Background" Value="#0A84FF" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#2B95FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#0070DD" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border Padding="24,22,24,20">
+        <StackPanel>
+            <TextBlock FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="#F4F6F9"
+                       Text="Check for updates" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="13"
+                       Foreground="#A5AFBD"
+                       LineHeight="19"
+                       TextWrapping="Wrap"
+                       Text="MegaSnip checks GitHub for the latest published release only when you ask. There are no automatic checks, telemetry, or downloads." />
+            <Border Margin="0,18,0,0"
+                    Padding="16,14"
+                    Background="#171A21"
+                    BorderBrush="#242A35"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <StackPanel>
+                    <TextBlock FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#8A94A6"
+                               Text="Installed version" />
+                    <TextBlock x:Name="CurrentVersionText"
+                               Margin="0,4,0,0"
+                               FontFamily="Consolas"
+                               FontSize="13"
+                               Foreground="#E8EDF4" />
+                    <Border Height="1" Margin="0,12,0,0" Background="#242A35" />
+                    <TextBlock x:Name="StatusTitleText"
+                               Margin="0,12,0,0"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="#F4F6F9"
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite"
+                               Text="Checking GitHub for the latest release…" />
+                    <TextBlock x:Name="StatusDetailText"
+                               Margin="0,6,0,0"
+                               FontSize="12.5"
+                               Foreground="#A5AFBD"
+                               LineHeight="18"
+                               TextWrapping="Wrap"
+                               Text="This connects to the public GitHub Releases API. Your captures, history, and settings stay on this PC; GitHub can see your IP address and the MegaSnip version." />
+                    <Border x:Name="ReleaseNotesPanel"
+                            Margin="0,14,0,0"
+                            Padding="12,10"
+                            Background="#12151B"
+                            BorderBrush="#242A35"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="#8A94A6"
+                                       Text="Release notes" />
+                            <ScrollViewer MaxHeight="140"
+                                          Margin="0,6,0,0"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <TextBlock x:Name="NotesText"
+                                           FontSize="12"
+                                           Foreground="#C9D2DE"
+                                           LineHeight="17"
+                                           TextWrapping="Wrap" />
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <StackPanel Margin="0,22,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                <Button x:Name="OpenReleasesButton"
+                        Content="All releases"
+                        Style="{StaticResource SecondaryButton}"
+                        Click="OnOpenReleasesClicked"
+                        AutomationProperties.Name="Open all MegaSnip releases on GitHub" />
+                <Button x:Name="CloseButton"
+                        Content="Close"
+                        IsCancel="True"
+                        IsDefault="True"
+                        Style="{StaticResource SecondaryButton}"
+                        Click="OnCloseClicked"
+                        AutomationProperties.Name="Close update check" />
+                <Button x:Name="OpenReleaseButton"
+                        Content="Open release page"
+                        Style="{StaticResource PrimaryButton}"
+                        Click="OnOpenReleaseClicked"
+                        Visibility="Collapsed"
+                        AutomationProperties.Name="Open the latest release page" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

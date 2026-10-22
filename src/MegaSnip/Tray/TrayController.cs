@@ -43,6 +43,9 @@ internal sealed class TrayController : IDisposable
         _openHistoryFolderItem = new ToolStripMenuItem("Open history folder");
         _openHistoryFolderItem.Click += OnOpenHistoryFolderRequested;
 
+        var checkForUpdatesItem = new ToolStripMenuItem("Check for updates…");
+        checkForUpdatesItem.Click += OnCheckForUpdatesClicked;
+
         var settingsItem = new ToolStripMenuItem("Settings");
         settingsItem.Click += OnSettingsClicked;
 
@@ -58,6 +61,7 @@ internal sealed class TrayController : IDisposable
         _contextMenu.Items.Add(_historyItem);
         _contextMenu.Items.Add(_pauseHistoryItem);
         _contextMenu.Items.Add(_openHistoryFolderItem);
+        _contextMenu.Items.Add(checkForUpdatesItem);
         _contextMenu.Items.Add(settingsItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(quitItem);
@@ -81,6 +85,8 @@ internal sealed class TrayController : IDisposable
     public event EventHandler? HistoryPauseToggled;
 
     public event EventHandler? OpenHistoryFolderRequested;
+
+    public event EventHandler? CheckForUpdatesRequested;
 
     public event EventHandler? SettingsRequested;
 
@@ -200,6 +206,9 @@ internal sealed class TrayController : IDisposable
 
     private void OnOpenHistoryFolderRequested(object? sender, EventArgs e) =>
         OpenHistoryFolderRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnCheckForUpdatesClicked(object? sender, EventArgs e) =>
+        CheckForUpdatesRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnContextMenuOpening(object? sender, EventArgs e) =>
         MenuOpening?.Invoke(this, EventArgs.Empty);

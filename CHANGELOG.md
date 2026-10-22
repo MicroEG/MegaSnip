@@ -2,6 +2,15 @@
 
 All notable changes to MegaSnip are documented in this file. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- Tray **Check for updates…** command with a manual, user-initiated GitHub Releases API check. It reports up-to-date, update-available, and unknown-version states, shows release notes, and opens the release page in the browser. Nothing is checked automatically, downloaded, or self-updated.
+- Version-tag parsing and numeric comparison, including `v` prefixes and pre-release or build suffixes, with safe fallback URL handling and friendly network, timeout, and rate-limit messages.
+- Tests for release parsing, version comparison, and the update dialog's success and failure states.
+- README updates documenting manual update checks and the exact outbound request.
+
 ## [0.1.0] - 2026-10-21
 
 ### Added
