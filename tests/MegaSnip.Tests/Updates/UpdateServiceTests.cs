@@ -10,7 +10,7 @@ public sealed class UpdateServiceTests
         {
           "tag_name": "v0.2.0",
           "name": "MegaSnip 0.2.0",
-          "html_url": "https://github.com/MicroEG/MegaSnip/releases/tag/v0.2.0",
+          "html_url": "https://github.com/MicroEG/MicroSnip/releases/tag/v0.2.0",
           "body": "Fixes and improvements.",
           "draft": false,
           "prerelease": false
@@ -26,7 +26,7 @@ public sealed class UpdateServiceTests
         Assert.Equal("v0.2.0", release.TagName);
         Assert.Equal("MegaSnip 0.2.0", release.Name);
         Assert.Equal(
-            "https://github.com/MicroEG/MegaSnip/releases/tag/v0.2.0",
+            "https://github.com/MicroEG/MicroSnip/releases/tag/v0.2.0",
             release.ReleaseUrl);
         Assert.Equal("Fixes and improvements.", release.Notes);
     }
@@ -134,7 +134,7 @@ public sealed class UpdateServiceTests
 
         Assert.True(UpdateService.TryParseRelease(json, out UpdateRelease release));
         Assert.Equal(
-            "https://github.com/MicroEG/MegaSnip/releases/tag/v0.2.0",
+            "https://github.com/MicroEG/MicroSnip/releases/tag/v0.2.0",
             release.ReleaseUrl);
     }
 }

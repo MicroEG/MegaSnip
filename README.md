@@ -8,7 +8,7 @@ MegaSnip is a tray-only Windows utility that turns text on your screen into plai
 
 MegaSnip runs offline. OCR, capture, history, and settings never use the network. The only optional request is a user-initiated update check against the public GitHub Releases API; there are no automatic checks, cloud calls, API keys, telemetry, or analytics.
 
-Repository: [github.com/MicroEG/MegaSnip](https://github.com/MicroEG/MegaSnip)
+Repository: [github.com/MicroEG/MicroSnip](https://github.com/MicroEG/MicroSnip)
 
 ## Highlights
 
@@ -113,7 +113,7 @@ Updates are manual and optional. Choose **Check for updates…** from the tray m
 ## Offline and privacy
 
 - OCR, capture, history, and settings work fully offline. The only outbound request is the optional manual update check described above.
-- That request is a `GET` to `https://api.github.com/repos/MicroEG/MegaSnip/releases/latest` with a `MegaSnip/<version>` user agent. It does not include captures, history, settings, filenames, or account credentials. As with any web request, GitHub can see your IP address and the app version.
+- That request is a `GET` to `https://api.github.com/repos/MicroEG/MicroSnip/releases/latest` with a `MegaSnip/<version>` user agent. It does not include captures, history, settings, filenames, or account credentials. As with any web request, GitHub can see your IP address and the app version.
 - Nothing is uploaded, downloaded, or telemetered automatically.
 - Screen pixels are captured only after a selection is completed and only for the selected rectangle.
 - The latest capture is held in memory for the toast preview and **Last result**. It is discarded when MegaSnip exits.

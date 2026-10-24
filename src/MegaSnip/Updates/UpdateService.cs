@@ -37,11 +37,11 @@ internal sealed class UpdateCheckException : Exception
 
 internal static class UpdateService
 {
-    internal const string RepositoryUrl = "https://github.com/MicroEG/MegaSnip";
+    internal const string RepositoryUrl = "https://github.com/MicroEG/MicroSnip";
     internal const string ReleasesUrl = RepositoryUrl + "/releases";
 
     private const string LatestReleaseApiUrl =
-        "https://api.github.com/repos/MicroEG/MegaSnip/releases/latest";
+        "https://api.github.com/repos/MicroEG/MicroSnip/releases/latest";
     private const int MaxNotesLength = 12000;
 
     private static readonly HttpClient Client = CreateClient();
@@ -298,7 +298,7 @@ internal static class UpdateService
             uri.Scheme == Uri.UriSchemeHttps &&
             string.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase) &&
             uri.AbsolutePath.StartsWith(
-                "/MicroEG/MegaSnip/releases/",
+                "/MicroEG/MicroSnip/releases/",
                 StringComparison.OrdinalIgnoreCase))
         {
             return uri.AbsoluteUri;

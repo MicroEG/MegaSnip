@@ -33,7 +33,7 @@ public sealed class UpdateWindowSmokeTests
                     new UpdateRelease(
                         "v0.2.0",
                         "MegaSnip 0.2.0",
-                        "https://github.com/MicroEG/MegaSnip/releases/tag/v0.2.0",
+                        "https://github.com/MicroEG/MicroSnip/releases/tag/v0.2.0",
                         "Fixes and improvements."));
 
                 var window = new UpdateWindow(

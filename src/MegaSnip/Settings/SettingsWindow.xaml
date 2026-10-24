@@ -540,7 +540,7 @@
                     <TextBlock Margin="0,4,0,0"
                                FontSize="11"
                                Foreground="#5C6B80"
-                               Text="MegaSnip · github.com/MicroEG/MegaSnip" />
+                               Text="MegaSnip · github.com/MicroEG/MicroSnip" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button x:Name="CancelButton"
