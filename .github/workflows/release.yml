@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to build and publish (for example v0.2.0)"
+        description: "Existing tag to build and publish (for example v0.3.0)"
         required: true
         type: string
 
@@ -44,7 +44,7 @@ jobs:
           "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Check out release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 0
@@ -54,18 +54,18 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
-          [xml]$project = Get-Content -LiteralPath 'src/MegaSnip/MegaSnip.csproj'
+          [xml]$project = Get-Content -LiteralPath 'src/MicroSnip/MicroSnip.csproj'
           $projectVersion = $project.Project.PropertyGroup |
               ForEach-Object { $_.Version } |
               Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
               Select-Object -First 1
 
           if ("$projectVersion".Trim() -ne $env:VERSION) {
-              throw "Tag $env:TAG does not match <Version>$projectVersion</Version> in src/MegaSnip/MegaSnip.csproj. Bump the project version before tagging."
+              throw "Tag $env:TAG does not match <Version>$projectVersion</Version> in src/MicroSnip/MicroSnip.csproj. Bump the project version before tagging."
           }
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.x
           cache: true
@@ -74,15 +74,15 @@ jobs:
             Directory.Build.props
 
       - name: Restore
-        run: dotnet restore MegaSnip.sln
+        run: dotnet restore MicroSnip.sln
 
       - name: Build
-        run: dotnet build MegaSnip.sln -c Release --no-restore
+        run: dotnet build MicroSnip.sln -c Release --no-restore
 
       # Hosted Windows Server images do not guarantee a Windows OCR language
       # pack, so the environment-dependent OCR tests run locally instead.
       - name: Test
-        run: dotnet test MegaSnip.sln -c Release --no-build --filter "FullyQualifiedName!~MegaSnip.Tests.Ocr.WindowsOcrServiceTests"
+        run: dotnet test MicroSnip.sln -c Release --no-build --filter "FullyQualifiedName!~MicroSnip.Tests.Ocr.WindowsOcrServiceTests"
 
       - name: Publish x64
         shell: pwsh
@@ -98,8 +98,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Path release-assets -Force | Out-Null
 
-          Copy-Item -LiteralPath "dist/MegaSnip-$env:VERSION-win-x64/MegaSnip.exe" -Destination "release-assets/MegaSnip-$env:VERSION-win-x64.exe"
-          Copy-Item -LiteralPath "dist/MegaSnip-$env:VERSION-win-arm64/MegaSnip.exe" -Destination "release-assets/MegaSnip-$env:VERSION-win-arm64.exe"
+          Copy-Item -LiteralPath "dist/MicroSnip-$env:VERSION-win-x64/MicroSnip.exe" -Destination "release-assets/MicroSnip-$env:VERSION-win-x64.exe"
+          Copy-Item -LiteralPath "dist/MicroSnip-$env:VERSION-win-arm64/MicroSnip.exe" -Destination "release-assets/MicroSnip-$env:VERSION-win-arm64.exe"
 
           Get-ChildItem -LiteralPath release-assets |
               Select-Object Name, Length |
@@ -121,7 +121,7 @@ jobs:
           } else {
               gh release create $env:TAG @assets `
                   --verify-tag `
-                  --title "MegaSnip $env:VERSION" `
+                  --title "MicroSnip $env:VERSION" `
                   --generate-notes
           }
 

@@ -13,7 +13,7 @@
     <Product>MicroSnip</Product>
     <AssemblyTitle>MicroSnip</AssemblyTitle>
     <Description>Offline text snipping utility for Windows.</Description>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <!-- WPF owns the per-monitor-v2 manifest. WinForms is used only for the
          NotifyIcon and its menu, so its alternate runtime DPI setup cannot apply. -->
     <NoWarn>$(NoWarn);WFAC010</NoWarn>

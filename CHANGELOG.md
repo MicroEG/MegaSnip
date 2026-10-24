@@ -1,11 +1,13 @@
 # Changelog
 
-All notable changes to MegaSnip are documented in this file. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+All notable changes to MicroSnip are documented in this file. This project follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
 ### Changed
 
+- Renamed the application, project, namespaces, assembly, icon, and executable to **MicroSnip** (`MicroSnip.exe`); release assets are now named `MicroSnip-<version>-<rid>.exe`.
+- Existing `%APPDATA%\MegaSnip` settings and history are moved to `%APPDATA%\MicroSnip` on first launch when the new folder does not exist. The Windows startup Run value migrates from `MegaSnip` to `MicroSnip`, and custom history folders are left untouched.
 - Repository moved to `github.com/MicroEG/MicroSnip`; update-check and Settings links now use the new location.
 
 ## [0.2.0] - 2026-10-22

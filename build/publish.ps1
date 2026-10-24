@@ -14,7 +14,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$projectPath = Join-Path $repositoryRoot "src\MegaSnip\MegaSnip.csproj"
+$projectPath = Join-Path $repositoryRoot "src\MicroSnip\MicroSnip.csproj"
 
 if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) {
     throw "Project file not found: $projectPath"
@@ -31,9 +31,9 @@ if ([string]::IsNullOrWhiteSpace($version)) {
 }
 
 $targetDirectory = [System.IO.Path]::GetFullPath(
-    (Join-Path $OutputDirectory "MegaSnip-$version-$RuntimeIdentifier"))
+    (Join-Path $OutputDirectory "MicroSnip-$version-$RuntimeIdentifier"))
 
-Write-Host "Publishing MegaSnip $version ($RuntimeIdentifier)"
+Write-Host "Publishing MicroSnip $version ($RuntimeIdentifier)"
 Write-Host "Output: $targetDirectory"
 
 dotnet publish $projectPath `
@@ -52,9 +52,9 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
 
-$executablePath = Join-Path $targetDirectory "MegaSnip.exe"
+$executablePath = Join-Path $targetDirectory "MicroSnip.exe"
 if (-not (Test-Path -LiteralPath $executablePath -PathType Leaf)) {
-    throw "Publish completed but MegaSnip.exe was not found in $targetDirectory"
+    throw "Publish completed but MicroSnip.exe was not found in $targetDirectory"
 }
 
 $files = @(Get-ChildItem -LiteralPath $targetDirectory -File)

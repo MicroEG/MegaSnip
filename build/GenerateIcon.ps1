@@ -1,5 +1,5 @@
 param(
-    [string]$OutputPath = (Join-Path $PSScriptRoot "..\src\MegaSnip\Assets\MegaSnip.ico")
+    [string]$OutputPath = (Join-Path $PSScriptRoot "..\src\MicroSnip\Assets\MicroSnip.ico")
 )
 
 Set-StrictMode -Version Latest

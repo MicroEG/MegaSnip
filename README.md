@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="docs/icon.png" width="128" height="128" alt="MegaSnip app icon">
+  <img src="docs/icon.png" width="128" height="128" alt="MicroSnip app icon">
 </p>
 
-# MegaSnip
+# MicroSnip
 
-MegaSnip is a tray-only Windows utility that turns text on your screen into plain text on your clipboard. Press a hotkey, drag a box around the text, and MegaSnip recognizes it locally with Windows OCR and copies it.
+MicroSnip is a tray-only Windows utility that turns text on your screen into plain text on your clipboard. Press a hotkey, drag a box around the text, and MicroSnip recognizes it locally with Windows OCR and copies it.
 
-MegaSnip runs offline. OCR, capture, history, and settings never use the network. The only optional request is a user-initiated update check against the public GitHub Releases API; there are no automatic checks, cloud calls, API keys, telemetry, or analytics.
+MicroSnip runs offline. OCR, capture, history, and settings never use the network. The only optional request is a user-initiated update check against the public GitHub Releases API; there are no automatic checks, cloud calls, API keys, telemetry, or analytics.
 
 Repository: [github.com/MicroEG/MicroSnip](https://github.com/MicroEG/MicroSnip)
 
@@ -23,7 +23,7 @@ Repository: [github.com/MicroEG/MicroSnip](https://github.com/MicroEG/MicroSnip)
 - Optional local history with text and captured images, search, editing, copy, export, retention limits, and one-hour pause.
 - Optional manual **Check for updates** against the public GitHub Releases API, run only when you choose it. No background checks, downloads, or self-updating.
 - Single instance; launching a second copy exits immediately.
-- Settings persist to `%APPDATA%\MegaSnip\settings.json`.
+- Settings persist to `%APPDATA%\MicroSnip\settings.json`.
 - Optional start with Windows through the current user's `Run` key; no administrator rights required.
 - Best-effort low-level keyboard-hook fallback if another application already owns the configured hotkey.
 
@@ -34,11 +34,11 @@ Repository: [github.com/MicroEG/MicroSnip](https://github.com/MicroEG/MicroSnip)
 - The published build is self-contained and does not require a separate .NET installation.
 - Building from source requires the .NET 8 SDK or later.
 
-MegaSnip runs with the current user's privileges and never requests elevation.
+MicroSnip runs with the current user's privileges and never requests elevation.
 
 ## Usage
 
-1. Start `MegaSnip.exe`. It appears in the notification area, possibly under the hidden-icons chevron.
+1. Start `MicroSnip.exe`. It appears in the notification area, possibly under the hidden-icons chevron.
 2. Press `Ctrl+Alt+T` or choose **Snip** from the tray menu.
 3. Drag a rectangle around the text. The size label shows the selection in physical pixels.
 4. Release the mouse. The overlay closes, OCR runs, and the text is copied.
@@ -56,9 +56,9 @@ Tray menu:
 | **Open history folder** | Opens the current history folder in File Explorer. |
 | **Check for updates…** | Asks GitHub for the latest published release and links to its release page. Nothing is checked automatically. |
 | **Settings** | Opens the settings window. |
-| **Quit** | Exits MegaSnip. |
+| **Quit** | Exits MicroSnip. |
 
-If OCR finds no text, a **No text detected** toast is shown and the previous clipboard contents are preserved. If the clipboard is locked by another application, MegaSnip retries for about one second before reporting a failure.
+If OCR finds no text, a **No text detected** toast is shown and the previous clipboard contents are preserved. If the clipboard is locked by another application, MicroSnip retries for about one second before reporting a failure.
 
 Selecting a region smaller than 5×5 pixels is treated as a cancel.
 
@@ -66,7 +66,7 @@ Selecting a region smaller than 5×5 pixels is treated as a cancel.
 
 History is enabled by default. The first time it is active, a privacy notice explains what is saved and where it is stored; acknowledging the notice is remembered in the settings file.
 
-- **Storage:** by default `%APPDATA%\MegaSnip\history\`. The folder contains `history.db` (a SQLite index) and one folder per snip with `meta.json` plus `image.png` and `thumb.png` when images are saved.
+- **Storage:** by default `%APPDATA%\MicroSnip\history\`. The folder contains `history.db` (a SQLite index) and one folder per snip with `meta.json` plus `image.png` and `thumb.png` when images are saved.
 - **What is saved:** recognized text always; the captured screenshot only when **Save captured images** is enabled. Empty OCR results are not logged.
 - **Nothing leaves the PC:** history is never uploaded, synced, or analyzed.
 - **History window:** a virtualized list with search, a thumbnail and text detail pane, and automatic saving of text edits. Actions include Copy text, Copy image, Copy both, Re-run OCR on the saved image, Open folder, Delete, Clear all history, and Export.
@@ -74,12 +74,16 @@ History is enabled by default. The first time it is active, a privacy notice exp
 - **Deletion:** deleting a snip removes its database row and its folder, including the saved image. Clear all requires typing `DELETE` and permanently removes every entry.
 - **Export:** writes an `export-<timestamp>` folder with `index.md`, one `.txt` per snip, and a `.png` when an image exists.
 - **Retention:** automatic cleanup runs at startup and every 24 hours. You can cap the number of snips, their age in days, and total disk usage; `0` disables an individual limit.
-- **Pause:** the tray pause stops new history writes for one hour. It is in memory only and resets when MegaSnip restarts.
+- **Pause:** the tray pause stops new history writes for one hour. It is in memory only and resets when MicroSnip restarts.
 - **Storage folder change:** choose **Change…** in Settings. The entire history is copied to an empty folder, the new location is verified, and the old folder is removed. If the old folder cannot be removed, the move still completes and a warning is shown.
 
 ### Schema migration
 
 Settings files written by earlier versions (schema v1) are upgraded to schema v2 on load. Missing history fields receive their defaults, so existing settings keep working without manual edits. The SQLite schema is created automatically on first use, and snips saved by earlier history builds remain readable.
+
+### Upgrading from MegaSnip
+
+Starting with MicroSnip 0.3.0, the app and executable are named MicroSnip. On first launch, `%APPDATA%\MegaSnip` is moved to `%APPDATA%\MicroSnip` when the new folder does not already exist, and the Windows startup entry is moved from the `MegaSnip` Run value to `MicroSnip`. A custom history folder chosen in Settings is left in place. If the automatic move cannot complete, MicroSnip starts with default settings and leaves the old folder untouched.
 
 ## Settings
 
@@ -90,7 +94,7 @@ Changes are applied when you press **Save**:
 - **Line breaks** - preserve the recognized line breaks or join lines with single spaces.
 - **Open preview automatically** - open the result window instead of the success toast.
 - **Sound feedback** - play Windows system sounds for success, warning, and error outcomes.
-- **Start MegaSnip with Windows** - add or remove the current user's `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MegaSnip` value.
+- **Start MicroSnip with Windows** - add or remove the current user's `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MicroSnip` value.
 - **Save snips to history** - turn local history on or off.
 - **Save captured images with each snip** - include the screenshot in new history entries; text is saved either way.
 - **Ask before deleting snips** - show a confirmation dialog for single and bulk deletions.
@@ -104,34 +108,34 @@ Settings are validated before they are committed. If a new hotkey cannot be regi
 
 Updates are manual and optional. Choose **Check for updates…** from the tray menu to compare the installed version with the latest published release on GitHub.
 
-- The check is a single HTTPS request to the public GitHub Releases API. It runs only after you choose the command; MegaSnip never checks at startup, on a timer, or in the background.
+- The check is a single HTTPS request to the public GitHub Releases API. It runs only after you choose the command; MicroSnip never checks at startup, on a timer, or in the background.
 - The dialog shows the installed version, whether a newer release exists, and the release notes. **Open release page** opens the GitHub page in your default browser.
-- MegaSnip does not download, install, or self-update. You choose whether to download anything.
+- MicroSnip does not download, install, or self-update. You choose whether to download anything.
 - The result can be **up to date**, **update available**, or **not comparable** when a release tag is not a numeric version. Network failures and GitHub rate limits are shown as readable messages.
 - Only the latest non-draft, non-prerelease release is considered.
 
 ## Offline and privacy
 
 - OCR, capture, history, and settings work fully offline. The only outbound request is the optional manual update check described above.
-- That request is a `GET` to `https://api.github.com/repos/MicroEG/MicroSnip/releases/latest` with a `MegaSnip/<version>` user agent. It does not include captures, history, settings, filenames, or account credentials. As with any web request, GitHub can see your IP address and the app version.
+- That request is a `GET` to `https://api.github.com/repos/MicroEG/MicroSnip/releases/latest` with a `MicroSnip/<version>` user agent. It does not include captures, history, settings, filenames, or account credentials. As with any web request, GitHub can see your IP address and the app version.
 - Nothing is uploaded, downloaded, or telemetered automatically.
 - Screen pixels are captured only after a selection is completed and only for the selected rectangle.
-- The latest capture is held in memory for the toast preview and **Last result**. It is discarded when MegaSnip exits.
+- The latest capture is held in memory for the toast preview and **Last result**. It is discarded when MicroSnip exits.
 - During a normal snip, only text is written to the clipboard. The history window can explicitly copy a saved image or text and image together.
-- MegaSnip writes only:
-  - `%APPDATA%\MegaSnip\settings.json`
-  - the history folder (`%APPDATA%\MegaSnip\history\` by default), when history is enabled
-  - the current user's `MegaSnip` Run value, when **Start with Windows** is enabled
+- MicroSnip writes only:
+  - `%APPDATA%\MicroSnip\settings.json`
+  - the history folder (`%APPDATA%\MicroSnip\history\` by default), when history is enabled
+  - the current user's `MicroSnip` Run value, when **Start with Windows** is enabled
   - export folders that you explicitly choose
 - Text edits, OCR results, and saved images remain in history until you delete them or retention removes them.
 
-To remove MegaSnip, quit it, turn off **Start MegaSnip with Windows** (or delete the `MegaSnip` Run value), delete the executable, and remove `%APPDATA%\MegaSnip`.
+To remove MicroSnip, quit it, turn off **Start MicroSnip with Windows** (or delete the `MicroSnip` Run value), delete the executable, and remove `%APPDATA%\MicroSnip`.
 
 ## Build and test
 
 ```powershell
-dotnet build MegaSnip.sln -c Release
-dotnet test MegaSnip.sln -c Release
+dotnet build MicroSnip.sln -c Release
+dotnet test MicroSnip.sln -c Release
 ```
 
 The solution builds with warnings treated as errors. Tests cover clipboard retry behavior and image formats, line-break formatting, OCR post-processing, settings round-trips, corruption recovery, and schema migration, hotkey validation, history storage and retention, history directory migration, pause state, export, update release parsing and version comparison, the update dialog states, and OCR of a fixed PNG fixture.
@@ -147,7 +151,7 @@ powershell -ExecutionPolicy Bypass -File build/publish.ps1
 The script publishes a self-contained, single-file executable to:
 
 ```text
-dist\MegaSnip-<version>-win-x64\MegaSnip.exe
+dist\MicroSnip-<version>-win-x64\MicroSnip.exe
 ```
 
 Use `-RuntimeIdentifier win-arm64` for Windows on Arm. The SQLite native library is embedded for self-extraction, so the executable remains a single file. No installer is produced; the executable is portable. The build is not code-signed, so Windows SmartScreen may show a warning on first launch.
@@ -156,18 +160,18 @@ Use `-RuntimeIdentifier win-arm64` for Windows on Arm. The SQLite native library
 
 The workflow at `.github/workflows/release.yml` builds and publishes a GitHub release from a version tag.
 
-1. Update `<Version>` in `src/MegaSnip/MegaSnip.csproj` and add the matching `CHANGELOG.md` entry.
+1. Update `<Version>` in `src/MicroSnip/MicroSnip.csproj` and add the matching `CHANGELOG.md` entry.
 2. Commit and push the change.
-3. Create and push the tag, for example `git tag v0.2.0` and `git push origin v0.2.0`.
+3. Create and push the tag, for example `git tag v0.3.0` and `git push origin v0.3.0`.
 
-The workflow rejects a tag that does not match the project version. It runs the test suite, publishes `win-x64` and `win-arm64` single-file executables, and creates the GitHub release with `MegaSnip-<version>-<rid>.exe` assets and generated release notes. Re-running the workflow manually with an existing tag uploads the assets again and replaces existing files. No repository secrets are required; the workflow uses the built-in `GITHUB_TOKEN` with `contents: write` permission.
+The workflow rejects a tag that does not match the project version. It runs the test suite, publishes `win-x64` and `win-arm64` single-file executables, and creates the GitHub release with `MicroSnip-<version>-<rid>.exe` assets and generated release notes. Re-running the workflow manually with an existing tag uploads the assets again and replaces existing files. No repository secrets are required; the workflow uses the built-in `GITHUB_TOKEN` with `contents: write` permission.
 
 The release workflow skips the environment-dependent Windows OCR tests because hosted Windows Server images do not guarantee an OCR language pack. Run `dotnet test` locally to include them.
 
 ## Project layout
 
 ```text
-src/MegaSnip/
+src/MicroSnip/
   App.xaml.cs                  Startup, single instance, capture/OCR/copy orchestration
   Capture/                     Screen capture through GDI
   Clipboard/                   Unicode-text and multi-format image clipboard writers
@@ -180,7 +184,7 @@ src/MegaSnip/
   Toast/                       Non-activating result toast
   Tray/                        NotifyIcon and context menu
   Updates/                     GitHub release check, version comparison, update dialog
-tests/MegaSnip.Tests/          xUnit tests and fixed OCR fixture
+tests/MicroSnip.Tests/          xUnit tests and fixed OCR fixture
 build/                         Icon generation and publish scripts
 .github/workflows/             Tag-triggered release automation
 ```
@@ -201,7 +205,7 @@ build/                         Icon generation and publish scripts
 
 - OCR quality depends on the Windows OCR engine, installed language packs, and image clarity. Very small, low-contrast, stylized, or vertical text may recognize poorly.
 - **Last result** and the preview thumbnail live in memory only and are not saved across restarts. History entries persist until deleted.
-- A hotkey registered by an elevated process may be unavailable to MegaSnip; the hook fallback and tray menu remain available.
+- A hotkey registered by an elevated process may be unavailable to MicroSnip; the hook fallback and tray menu remain available.
 - Screen capture of elevated windows and UAC secure-desktop prompts is restricted by Windows.
 - The toast appears at the bottom-right of the primary display's work area.
 - History migrations require an empty destination folder; target folders containing other files are rejected.
