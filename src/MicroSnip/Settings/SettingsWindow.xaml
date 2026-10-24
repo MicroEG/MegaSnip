@@ -1,0 +1,562 @@
+<Window x:Class="MicroSnip.Settings.SettingsWindow"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MicroSnip settings"
+        Width="680"
+        Height="700"
+        MinWidth="620"
+        MinHeight="480"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F1115"
+        FontFamily="Segoe UI"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Grayscale">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PathInfoBrush" Color="#8A94A6" />
+        <SolidColorBrush x:Key="PathSuccessBrush" Color="#67D28B" />
+        <SolidColorBrush x:Key="PathWarningBrush" Color="#E7B25B" />
+        <SolidColorBrush x:Key="PathErrorBrush" Color="#FF8780" />
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#C9D2DE" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="HintText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#7E8898" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#F4F6F9" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#222833" />
+            <Setter Property="Foreground" Value="#E8EDF4" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#2C3542" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#36404F" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryButton"
+               TargetType="Button"
+               BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Background" Value="#0A84FF" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#2B95FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#0070DD" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="GhostButton"
+               TargetType="Button"
+               BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#A5AFBD" />
+        </Style>
+        <Style x:Key="ShortcutBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#171A21" />
+            <Setter Property="BorderBrush" Value="#2B3240" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CaretBrush" Value="#F4F6F9" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#F1F4F8" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#0A84FF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="NumericBox"
+               TargetType="TextBox"
+               BasedOn="{StaticResource ShortcutBox}">
+            <Setter Property="Width" Value="78" />
+            <Setter Property="Margin" Value="8,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Right" />
+        </Style>
+        <Style x:Key="DarkComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="#171A21" />
+            <Setter Property="BorderBrush" Value="#2B3240" />
+            <Setter Property="Foreground" Value="#E8EDF4" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Chrome"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                      HorizontalAlignment="Left"
+                                                      VerticalAlignment="Center"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+                                    <TextBlock Grid.Column="1"
+                                               Margin="0,0,12,0"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"
+                                               Foreground="#8A94A6"
+                                               Text="▾" />
+                                </Grid>
+                            </Border>
+                            <ToggleButton Background="Transparent"
+                                          BorderThickness="0"
+                                          ClickMode="Press"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Fade"
+                                   VerticalOffset="4">
+                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="240"
+                                        Background="#1B1F27"
+                                        BorderBrush="#2D3542"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+                                    <ScrollViewer Margin="0,4">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#0A84FF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Foreground" Value="#E8EDF4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemChrome"
+                                Margin="4,1"
+                                Padding="{TemplateBinding Padding}"
+                                Background="Transparent"
+                                CornerRadius="4">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#242B36" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#1E3A5F" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DarkCheckBox" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#D7DEE8" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="Box"
+                                    Width="18"
+                                    Height="18"
+                                    VerticalAlignment="Center"
+                                    Background="#171A21"
+                                    BorderBrush="#3A4454"
+                                    BorderThickness="1"
+                                    CornerRadius="4">
+                                <Path x:Name="Check"
+                                      Width="10"
+                                      Height="8"
+                                      Data="M 0 4 L 3.5 7.5 L 10 0"
+                                      Stretch="Fill"
+                                      Stroke="#FFFFFF"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeThickness="2"
+                                      Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter Grid.Column="1"
+                                              Margin="9,0,0,0"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#0A84FF" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#0A84FF" />
+                                <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#5A6B82" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border Padding="24,22,24,20" Background="#0F1115">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <StackPanel>
+                <TextBlock FontSize="20"
+                           FontWeight="SemiBold"
+                           Foreground="#F4F6F9"
+                           Text="Settings" />
+                <TextBlock Margin="0,4,0,0"
+                           FontSize="12"
+                           Foreground="#8A94A6"
+                           Text="Changes apply immediately and are saved for the next launch." />
+            </StackPanel>
+            <ScrollViewer x:Name="FormScroll"
+                          Grid.Row="1"
+                          Margin="0,22,0,0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="FormPanel" Margin="0,0,12,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="152" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Margin="0,8,0,0"
+                                   VerticalAlignment="Top"
+                                   Style="{StaticResource FieldLabel}"
+                                   Text="Snip hotkey" />
+                        <StackPanel Grid.Column="1" Margin="0,0,0,16">
+                            <DockPanel>
+                                <Button x:Name="CaptureHotkeyButton"
+                                        DockPanel.Dock="Right"
+                                        Margin="8,0,0,0"
+                                        Content="Change"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Click="OnCaptureHotkeyClicked"
+                                        AutomationProperties.Name="Change snip hotkey" />
+                                <TextBox x:Name="HotkeyBox"
+                                         Style="{StaticResource ShortcutBox}"
+                                         IsReadOnly="True"
+                                         IsReadOnlyCaretVisible="False"
+                                         IsTabStop="False"
+                                         PreviewKeyDown="OnHotkeyPreviewKeyDown"
+                                         LostKeyboardFocus="OnHotkeyLostKeyboardFocus"
+                                         AutomationProperties.Name="Snip hotkey" />
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource HintText}"
+                                       Text="Choose Change, then press a combination including Ctrl, Alt, Shift, or Win." />
+                        </StackPanel>
+                        <TextBlock Grid.Row="1"
+                                   Margin="0,8,0,0"
+                                   VerticalAlignment="Top"
+                                   Style="{StaticResource FieldLabel}"
+                                   Text="OCR language" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,16">
+                            <ComboBox x:Name="LanguageCombo"
+                                      Style="{StaticResource DarkComboBox}"
+                                      AutomationProperties.Name="OCR language" />
+                            <TextBlock Style="{StaticResource HintText}"
+                                       Text="System default follows your Windows languages. OCR language packs are installed in Windows Settings." />
+                        </StackPanel>
+                        <TextBlock Grid.Row="2"
+                                   Margin="0,8,0,0"
+                                   VerticalAlignment="Top"
+                                   Style="{StaticResource FieldLabel}"
+                                   Text="Copied line breaks" />
+                        <StackPanel Grid.Row="2" Grid.Column="1">
+                            <ComboBox x:Name="LineBreakCombo"
+                                      Style="{StaticResource DarkComboBox}"
+                                      AutomationProperties.Name="Copied line breaks" />
+                            <TextBlock Style="{StaticResource HintText}"
+                                       Text="Applies to the clipboard and to both Copy actions in the preview." />
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Margin="0,20,0,16" Background="#242A35" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="Behavior" />
+                    <CheckBox x:Name="AutoPreviewCheck"
+                              Margin="0,0,0,12"
+                              Content="Open the preview automatically after a successful snip"
+                              Style="{StaticResource DarkCheckBox}"
+                              AutomationProperties.Name="Open preview automatically after a successful snip" />
+                    <CheckBox x:Name="SoundFeedbackCheck"
+                              Margin="0,0,0,12"
+                              Content="Play a sound when a snip finishes"
+                              Style="{StaticResource DarkCheckBox}"
+                              AutomationProperties.Name="Play a sound when a snip finishes" />
+                    <CheckBox x:Name="StartWithWindowsCheck"
+                              Content="Start MicroSnip when I sign in to Windows"
+                              Style="{StaticResource DarkCheckBox}"
+                              AutomationProperties.Name="Start MicroSnip when I sign in" />
+                    <Border Height="1" Margin="0,20,0,16" Background="#242A35" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="History" />
+                    <CheckBox x:Name="SaveHistoryCheck"
+                              Margin="0,0,0,4"
+                              Content="Save snips to history"
+                              Style="{StaticResource DarkCheckBox}"
+                              Checked="OnSaveHistoryChanged"
+                              Unchecked="OnSaveHistoryChanged"
+                              AutomationProperties.Name="Save snips to history" />
+                    <TextBlock Margin="27,4,0,14"
+                               Style="{StaticResource HintText}"
+                               Text="History stays in the folder below. Nothing is uploaded, sent, or synced." />
+                    <StackPanel x:Name="HistoryOptionsPanel">
+                        <CheckBox x:Name="SaveHistoryImagesCheck"
+                                  Margin="0,0,0,4"
+                                  Content="Save captured images with each snip"
+                                  Style="{StaticResource DarkCheckBox}"
+                                  AutomationProperties.Name="Save captured images with each snip" />
+                        <TextBlock Margin="27,4,0,14"
+                                   Style="{StaticResource HintText}"
+                                   Text="Images enable Copy image, Copy both, and Re-run OCR. The recognized text is saved either way." />
+                        <CheckBox x:Name="AskBeforeDeleteCheck"
+                                  Margin="0,0,0,16"
+                                  Content="Ask before deleting snips"
+                                  Style="{StaticResource DarkCheckBox}"
+                                  AutomationProperties.Name="Ask before deleting snips" />
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="152" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Margin="0,8,0,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource FieldLabel}"
+                                       Text="Double-click action" />
+                            <StackPanel Grid.Column="1">
+                                <ComboBox x:Name="DefaultHistoryActionCombo"
+                                          Style="{StaticResource DarkComboBox}"
+                                          AutomationProperties.Name="Default history row action" />
+                                <TextBlock Style="{StaticResource HintText}"
+                                           Text="Applies when you double-click a row in the history list." />
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="152" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Margin="0,8,0,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource FieldLabel}"
+                                       Text="Storage folder" />
+                            <StackPanel Grid.Column="1">
+                                <Border Padding="10,7"
+                                        Background="#171A21"
+                                        BorderBrush="#2B3240"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+                                    <TextBlock x:Name="HistoryPathText"
+                                               FontSize="12.5"
+                                               Foreground="#F1F4F8"
+                                               TextWrapping="Wrap" />
+                                </Border>
+                                <DockPanel Margin="0,8,0,0">
+                                    <Button x:Name="ChangeHistoryFolderButton"
+                                            Margin="0"
+                                            DockPanel.Dock="Left"
+                                            Content="Change…"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Click="OnChangeHistoryFolderClicked"
+                                            AutomationProperties.Name="Change history storage folder" />
+                                    <TextBlock x:Name="HistoryPathStatusText"
+                                               Margin="10,0,0,0"
+                                               VerticalAlignment="Center"
+                                               FontSize="11.5"
+                                               Foreground="{StaticResource PathInfoBrush}"
+                                               TextWrapping="Wrap"
+                                               Visibility="Collapsed" />
+                                </DockPanel>
+                                <TextBlock Style="{StaticResource HintText}"
+                                           Text="Changing the folder moves the entire history. Choose an empty folder." />
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox x:Name="AutoCleanupCheck"
+                                  Content="Delete old snips automatically"
+                                  Style="{StaticResource DarkCheckBox}"
+                                  Checked="OnAutoCleanupChanged"
+                                  Unchecked="OnAutoCleanupChanged"
+                                  AutomationProperties.Name="Delete old snips automatically" />
+                        <StackPanel x:Name="AutoCleanupOptionsPanel" Margin="27,10,0,0">
+                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="12.5"
+                                           Foreground="#C9D2DE"
+                                           Text="Keep at most" />
+                                <TextBox x:Name="MaxEntriesBox"
+                                         Style="{StaticResource NumericBox}"
+                                         AutomationProperties.Name="Maximum number of snips" />
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="12.5"
+                                           Foreground="#C9D2DE"
+                                           Text="snips" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="12.5"
+                                           Foreground="#C9D2DE"
+                                           Text="Delete snips older than" />
+                                <TextBox x:Name="MaxAgeDaysBox"
+                                         Style="{StaticResource NumericBox}"
+                                         AutomationProperties.Name="Maximum snip age in days" />
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="12.5"
+                                           Foreground="#C9D2DE"
+                                           Text="days" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="12.5"
+                                           Foreground="#C9D2DE"
+                                           Text="Limit storage to" />
+                                <TextBox x:Name="MaxDiskMBBox"
+                                         Style="{StaticResource NumericBox}"
+                                         AutomationProperties.Name="Maximum history storage in megabytes" />
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="12.5"
+                                           Foreground="#C9D2DE"
+                                           Text="MB" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource HintText}"
+                                       Text="Use 0 for no limit. Cleanup runs at startup and every 24 hours." />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+            <Grid Grid.Row="2" Margin="0,22,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="ErrorText"
+                               FontSize="12"
+                               Foreground="#FF8780"
+                               TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               AutomationProperties.LiveSetting="Assertive" />
+                    <TextBlock Margin="0,4,0,0"
+                               FontSize="11"
+                               Foreground="#5C6B80"
+                               Text="MicroSnip · github.com/MicroEG/MicroSnip" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="CancelButton"
+                            Content="Cancel"
+                            IsCancel="True"
+                            Style="{StaticResource GhostButton}"
+                            Click="OnCancelClicked"
+                            AutomationProperties.Name="Cancel settings changes" />
+                    <Button x:Name="SaveButton"
+                            Content="Save"
+                            IsDefault="True"
+                            Style="{StaticResource PrimaryButton}"
+                            Click="OnSaveClicked"
+                            AutomationProperties.Name="Save settings" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

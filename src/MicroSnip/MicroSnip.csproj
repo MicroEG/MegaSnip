@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>MicroSnip</AssemblyName>
+    <RootNamespace>MicroSnip</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\MicroSnip.ico</ApplicationIcon>
+    <Product>MicroSnip</Product>
+    <AssemblyTitle>MicroSnip</AssemblyTitle>
+    <Description>Offline text snipping utility for Windows.</Description>
+    <Version>0.2.0</Version>
+    <!-- WPF owns the per-monitor-v2 manifest. WinForms is used only for the
+         NotifyIcon and its menu, so its alternate runtime DPI setup cannot apply. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MicroSnip.Tests" />
+  </ItemGroup>
+
+</Project>

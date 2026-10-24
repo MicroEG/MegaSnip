@@ -1,0 +1,183 @@
+<Window x:Class="MicroSnip.Preview.PreviewWindow"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MicroSnip preview"
+        Width="760"
+        Height="600"
+        MinWidth="560"
+        MinHeight="420"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F1115"
+        FontFamily="Segoe UI"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Grayscale">
+    <Window.Resources>
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#222833" />
+            <Setter Property="Foreground" Value="#E8EDF4" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#2C3542" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#36404F" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryButton"
+               TargetType="Button"
+               BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Background" Value="#0A84FF" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#2B95FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#0070DD" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="GhostButton"
+               TargetType="Button"
+               BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#A5AFBD" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock FontSize="19"
+                           FontWeight="SemiBold"
+                           Foreground="#F4F6F9"
+                           Text="Captured text" />
+                <TextBlock Margin="0,3,0,0"
+                           FontSize="12"
+                           Foreground="#8A94A6"
+                           Text="Review or edit the recognized text before copying." />
+            </StackPanel>
+            <TextBlock x:Name="CharacterCountText"
+                       Grid.Column="1"
+                       VerticalAlignment="Bottom"
+                       FontSize="12"
+                       Foreground="#8A94A6" />
+        </Grid>
+        <Border Grid.Row="1"
+                Margin="0,14,0,0"
+                Padding="6"
+                HorizontalAlignment="Left"
+                Background="#171A21"
+                BorderBrush="#242A35"
+                BorderThickness="1"
+                CornerRadius="8"
+                ToolTip="Captured region">
+            <Image x:Name="PreviewImage"
+                   MaxWidth="320"
+                   MaxHeight="112"
+                   Stretch="Uniform"
+                   StretchDirection="DownOnly"
+                   AutomationProperties.Name="Captured region preview" />
+        </Border>
+        <TextBox x:Name="TextEditor"
+                 Grid.Row="2"
+                 Margin="0,14,0,14"
+                 Padding="12"
+                 AcceptsReturn="True"
+                 Background="#171A21"
+                 BorderBrush="#2B3240"
+                 BorderThickness="1"
+                 CaretBrush="#F4F6F9"
+                 FontFamily="Segoe UI"
+                 FontSize="14"
+                 Foreground="#F1F4F8"
+                 HorizontalScrollBarVisibility="Disabled"
+                 SelectionBrush="#2B6CB0"
+                 SpellCheck.IsEnabled="False"
+                 TextWrapping="Wrap"
+                 VerticalContentAlignment="Top"
+                 VerticalScrollBarVisibility="Auto"
+                 TextChanged="OnTextChanged"
+                 AutomationProperties.Name="Recognized text" />
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="StatusText"
+                       Margin="0,0,12,0"
+                       VerticalAlignment="Center"
+                       FontSize="12"
+                       Foreground="#8A94A6"
+                       TextTrimming="CharacterEllipsis" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="RerunButton"
+                        Content="Re-run OCR"
+                        Style="{StaticResource SecondaryButton}"
+                        Click="OnRerunClicked" />
+                <Button x:Name="CopyButton"
+                        Content="Copy"
+                        Style="{StaticResource SecondaryButton}"
+                        Click="OnCopyClicked" />
+                <Button x:Name="CopyCloseButton"
+                        Content="Copy &amp; Close"
+                        Style="{StaticResource PrimaryButton}"
+                        Click="OnCopyCloseClicked" />
+                <Button Content="Close"
+                        Style="{StaticResource GhostButton}"
+                        Click="OnCloseClicked" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
